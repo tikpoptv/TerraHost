@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  # Frontend Service (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: terrahost-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - terrahost-network
+    restart: unless-stopped
+
+networks:
+  terrahost-network:
+    driver: bridge
