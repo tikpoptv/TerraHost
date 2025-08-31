@@ -1,0 +1,38 @@
+{
+  "name": "terrahost-backend",
+  "version": "1.0.0",
+  "description": "TerraHost Backend API - Geospatial data processing and management",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "docker:build": "docker build -t terrahost-backend .",
+    "docker:run": "docker run -p 8000:8000 terrahost-backend"
+  },
+  "keywords": ["geospatial", "gis", "api", "express", "terrahost"],
+  "author": "TerraHost Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "dotenv": "^16.3.1",
+    "joi": "^17.11.0",
+    "express-rate-limit": "^7.1.5",
+    "compression": "^1.7.4",
+    "pg": "^8.11.3",
+    "pg-pool": "^3.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "@types/node": "^20.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

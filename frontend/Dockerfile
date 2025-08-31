@@ -39,4 +39,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Optional: Set production API URL if not provided via build args
+# ENV NEXT_PUBLIC_API_URL=https://api.terrahost.com
+
 CMD ["node", "server.js"]
