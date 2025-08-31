@@ -8,11 +8,11 @@ services:
       dockerfile: Dockerfile
     container_name: terrahost-backend
     ports:
-      - "3501:8000"
+      - "${BACKEND_EXTERNAL_PORT:-3501}:${BACKEND_PORT:-8000}"
     environment:
-      - NODE_ENV=production
-      - PORT=8000
-      - HOST=0.0.0.0
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${BACKEND_PORT:-8000}
+      - HOST=${BACKEND_HOST:-0.0.0.0}
     networks:
       - terrahost-network
     restart: unless-stopped
@@ -30,10 +30,10 @@ services:
       dockerfile: Dockerfile
     container_name: terrahost-frontend
     ports:
-      - "3500:3000"
+      - "${FRONTEND_EXTERNAL_PORT:-3500}:${FRONTEND_PORT:-3000}"
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
       - backend
     networks:
