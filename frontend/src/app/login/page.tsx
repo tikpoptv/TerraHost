@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Generate fixed star positions to avoid hydration mismatch
 const generateStars = () => {
@@ -36,24 +38,58 @@ const generateStars = () => {
 const STARS = generateStars();
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [loginMethod, setLoginMethod] = useState<'email' | 'username'>('email');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
   const router = useRouter();
+  const { login } = useAuth();
+
+  // Clear input when switching login method
+  const handleLoginMethodChange = (method: 'email' | 'username') => {
+    setLoginMethod(method);
+    setEmailOrUsername('');
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // TODO: เพิ่ม authentication logic ที่นี่
     try {
-      // จำลองการ login
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Basic input check first
+      if (!emailOrUsername.trim()) {
+        setError(loginMethod === 'email' ? 'กรุณากรอกอีเมล' : 'กรุณากรอกชื่อผู้ใช้');
+        return;
+      }
+
+      if (!password.trim()) {
+        setError('กรุณากรอกรหัสผ่าน');
+        return;
+      }
+
+      // Prepare login credentials based on method
+      const credentials = loginMethod === 'email' 
+        ? { email: emailOrUsername.trim(), password }
+        : { username: emailOrUsername.trim(), password };
+
+      // Attempt login
+      const result = await login(credentials);
       
-      // เมื่อ login สำเร็จ redirect ไปหน้า dashboard
-      router.push('/dashboard');
+      if (result.success) {
+        console.log('✅ Login successful, redirecting to dashboard...');
+        // Small delay to ensure auth state is updated
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 100);
+      } else {
+        setError(result.error || 'Login failed');
+      }
     } catch (error) {
+      setError('Network error. Please try again.');
       console.error('Login failed:', error);
     } finally {
       setIsLoading(false);
@@ -61,6 +97,7 @@ export default function LoginPage() {
   };
 
   return (
+    <ProtectedRoute requireAuth={false}>
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
       {/* Satellite Earth Background */}
       <div className="absolute inset-0 z-0">
@@ -149,27 +186,72 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4 text-red-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.860-.833-2.63 0L3.184 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <p className="text-red-200 text-sm">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Login Method Toggle */}
+            <div className="mb-4">
+              <div className="flex rounded-lg bg-black/30 p-1">
+                <button
+                  type="button"
+                  onClick={() => handleLoginMethodChange('email')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+                    loginMethod === 'email'
+                      ? 'bg-gray-600 text-white'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  อีเมล
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLoginMethodChange('username')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+                    loginMethod === 'username'
+                      ? 'bg-gray-600 text-white'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  ชื่อผู้ใช้
+                </button>
+              </div>
+            </div>
+
+            {/* Email/Username Input */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-2">
-                อีเมล
+              <label htmlFor="emailOrUsername" className="block text-sm font-medium text-gray-200 mb-2">
+                {loginMethod === 'email' ? 'อีเมล' : 'ชื่อผู้ใช้'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
-                  </svg>
+                  {loginMethod === 'email' ? (
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                  )}
                 </div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
+                  id="emailOrUsername"
+                  name="emailOrUsername"
+                  type={loginMethod === 'email' ? 'email' : 'text'}
+                  autoComplete={loginMethod === 'email' ? 'email' : 'username'}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-600 rounded-lg bg-black/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-400 transition-all duration-200"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={loginMethod === 'email' ? 'your@email.com' : 'ชื่อผู้ใช้ของคุณ'}
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                 />
               </div>
             </div>
@@ -190,7 +272,6 @@ export default function LoginPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  required
                   className="block w-full pl-10 pr-10 py-3 border border-gray-600 rounded-lg bg-black/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-400 transition-all duration-200"
                   placeholder="••••••••"
                   value={password}
@@ -360,5 +441,6 @@ export default function LoginPage() {
         }
       `}</style>
     </div>
+    </ProtectedRoute>
   );
 }

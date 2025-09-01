@@ -69,6 +69,14 @@ class ApiClient {
       // Handle 401 Unauthorized
       if (response.status === 401) {
         this.removeToken();
+        // Clear localStorage to trigger auth state change in AuthProvider
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          localStorage.removeItem('auth_session');
+          // AuthProvider will detect auth state change and redirect to login
+          window.dispatchEvent(new Event('storage'));
+        }
       }
 
       // Try to parse JSON, handle cases where response is not JSON
@@ -79,10 +87,18 @@ class ApiClient {
         data = null;
       }
 
+      // Flatten nested backend response structure if exists
+      let finalData = data;
+      if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+        // Backend sends: { success: true, data: { actual_data } }
+        // Flatten to: { actual_data }
+        finalData = data.data;
+      }
+
       return {
         success: response.ok,
         status: response.status,
-        data,
+        data: finalData,
         error: !response.ok ? `HTTP ${response.status}: ${response.statusText}` : undefined
       };
     } catch (error) {

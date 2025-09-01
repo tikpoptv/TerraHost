@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import HealthCheckProvider from "@/components/HealthCheckProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,9 +30,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <HealthCheckProvider checkOnMount={true} periodicCheck={false}>
-          {children}
-        </HealthCheckProvider>
+        <AuthProvider>
+          <HealthCheckProvider checkOnMount={true} periodicCheck={false}>
+            {children}
+          </HealthCheckProvider>
+        </AuthProvider>
       </body>
     </html>
   );

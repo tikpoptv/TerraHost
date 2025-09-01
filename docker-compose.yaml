@@ -10,9 +10,20 @@ services:
     ports:
       - "${BACKEND_EXTERNAL_PORT:-3501}:${BACKEND_PORT:-8000}"
     environment:
+      # Server Configuration
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=${BACKEND_PORT:-8000}
-      - HOST=${BACKEND_HOST:-0.0.0.0}
+      
+      # Database Configuration
+      - DB_HOST=${DB_HOST:-localhost}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-terrahost}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
     networks:
       - terrahost-network
     restart: unless-stopped
@@ -35,7 +46,8 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - terrahost-network
     restart: unless-stopped
