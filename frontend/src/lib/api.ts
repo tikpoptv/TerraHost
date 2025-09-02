@@ -10,37 +10,28 @@ class ApiClient {
   private token: string | null = null;
 
   constructor(baseURL?: string) {
-    // Priority: 1. Parameter, 2. Runtime env, 3. Build-time env, 4. Default
-    this.baseURL = baseURL || 
-      this.getRuntimeApiUrl() || 
-      process.env.NEXT_PUBLIC_API_URL || 
-      'http://localhost:8000';
+    // Multiple fallback strategies for API URL
+    const apiUrl = baseURL || 
+                   process.env.NEXT_PUBLIC_API_URL || 
+                   (typeof window !== 'undefined' && window.location.origin.includes('localhost') 
+                     ? 'http://localhost:8000' 
+                     : 'https://api.terrahost.com'); // Production fallback
+                     
+    this.baseURL = apiUrl;
+    
+    // Debug environment variables (only in development)
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      console.log('🔧 API Configuration:', {
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+        finalBaseURL: this.baseURL,
+        nodeEnv: process.env.NODE_ENV
+      });
+    }
     
     // Load token from localStorage if available
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token');
     }
-  }
-
-  // Get runtime API URL from various sources
-  private getRuntimeApiUrl(): string | null {
-    // Check if we're in browser environment
-    if (typeof window !== 'undefined') {
-      // Check for runtime environment variable in window object
-      const windowEnv = (window as Window & { __RUNTIME_CONFIG__?: { NEXT_PUBLIC_API_URL?: string } }).__RUNTIME_CONFIG__?.NEXT_PUBLIC_API_URL;
-      if (windowEnv) return windowEnv;
-      
-      // Check for meta tag with API URL
-      const metaApiUrl = document.querySelector('meta[name="api-url"]')?.getAttribute('content');
-      if (metaApiUrl) return metaApiUrl;
-    }
-    
-    // Check Node.js environment (for SSR)
-    if (typeof process !== 'undefined' && process.env) {
-      return process.env.NEXT_PUBLIC_API_URL || null;
-    }
-    
-    return null;
   }
 
   // Set JWT token
@@ -67,6 +58,15 @@ class ApiClient {
   // Check if user is authenticated
   isAuthenticated(): boolean {
     return this.token !== null;
+  }
+
+  // Get current API configuration (for debugging)
+  getApiConfig(): { baseURL: string; hasToken: boolean; environment: string } {
+    return {
+      baseURL: this.baseURL,
+      hasToken: this.token !== null,
+      environment: process.env.NODE_ENV || 'unknown'
+    };
   }
 
   // Base fetch method with JWT handling
@@ -108,7 +108,7 @@ class ApiClient {
       let data;
       try {
         data = await response.json();
-      } catch {
+      } catch (jsonError) {
         data = null;
       }
 

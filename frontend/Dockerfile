@@ -12,14 +12,28 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Accept build arguments
+ARG NEXT_PUBLIC_API_URL
+ARG NODE_ENV=production
+
+# Set environment variables for build time
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NODE_ENV=$NODE_ENV
+
 RUN npm run build
 
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
+# Accept runtime arguments
+ARG NEXT_PUBLIC_API_URL
+ARG NODE_ENV=production
+
+# Set runtime environment variables
+ENV NODE_ENV=$NODE_ENV
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -39,27 +53,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Create a startup script to inject runtime environment variables
-COPY <<EOF /app/start.sh
-#!/bin/sh
+# Optional: Set production API URL if not provided via build args
+# ENV NEXT_PUBLIC_API_URL=https://api.terrahost.com
 
-# Create runtime config for environment variables
-echo "window.__RUNTIME_CONFIG__ = {" > /tmp/runtime-config.js
-echo "  NEXT_PUBLIC_API_URL: '\${NEXT_PUBLIC_API_URL:-http://localhost:8000}'" >> /tmp/runtime-config.js
-echo "};" >> /tmp/runtime-config.js
-
-# Replace the placeholder in any HTML files if they exist
-if [ -f "/app/public/runtime-config.js" ]; then
-  cp /tmp/runtime-config.js /app/public/runtime-config.js
-fi
-
-# Start the Next.js server
-exec node server.js
-EOF
-
-RUN chmod +x /app/start.sh
-
-# Create placeholder runtime config file
-RUN echo "window.__RUNTIME_CONFIG__ = {};" > /app/public/runtime-config.js
-
-CMD ["/app/start.sh"]
+CMD ["node", "server.js"]
