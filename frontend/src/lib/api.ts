@@ -1,3 +1,5 @@
+import envConfig from '@/config/env';
+
 interface ApiResponse<T = unknown> {
   success: boolean;
   status: number;
@@ -10,23 +12,7 @@ class ApiClient {
   private token: string | null = null;
 
   constructor(baseURL?: string) {
-    // Multiple fallback strategies for API URL
-    const apiUrl = baseURL || 
-                   process.env.NEXT_PUBLIC_API_URL || 
-                   (typeof window !== 'undefined' && window.location.origin.includes('localhost') 
-                     ? 'http://localhost:8000' 
-                     : 'https://api.terrahost.com'); // Production fallback
-                     
-    this.baseURL = apiUrl;
-    
-    // Debug environment variables (only in development)
-    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-      console.log('🔧 API Configuration:', {
-        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-        finalBaseURL: this.baseURL,
-        nodeEnv: process.env.NODE_ENV
-      });
-    }
+    this.baseURL = baseURL || envConfig.getApiUrl();
     
     // Load token from localStorage if available
     if (typeof window !== 'undefined') {
@@ -61,11 +47,17 @@ class ApiClient {
   }
 
   // Get current API configuration (for debugging)
-  getApiConfig(): { baseURL: string; hasToken: boolean; environment: string } {
+  getApiConfig(): { 
+    baseURL: string; 
+    hasToken: boolean; 
+    environment: string; 
+    envDebug: ReturnType<typeof envConfig.debugInfo> 
+  } {
     return {
       baseURL: this.baseURL,
       hasToken: this.token !== null,
-      environment: process.env.NODE_ENV || 'unknown'
+      environment: envConfig.getNodeEnv(),
+      envDebug: envConfig.debugInfo()
     };
   }
 
@@ -108,7 +100,7 @@ class ApiClient {
       let data;
       try {
         data = await response.json();
-      } catch (jsonError) {
+      } catch {
         data = null;
       }
 
