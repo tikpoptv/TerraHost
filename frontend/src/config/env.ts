@@ -51,16 +51,18 @@ class EnvironmentManager {
   }
 
   private logConfiguration(): void {
-    if (typeof window !== 'undefined') {
-      console.log('Environment Configuration:', {
-        apiUrl: this.config.apiUrl,
-        nodeEnv: this.config.nodeEnv,
-        isDevelopment: this.config.isDevelopment,
-        isProduction: this.config.isProduction,
-        timestamp: new Date().toISOString(),
-        initialized: this.initialized
-      });
-    }
+    console.log('TerraHost Environment Configuration:', {
+      apiUrl: this.config.apiUrl,
+      nodeEnv: this.config.nodeEnv,
+      isDevelopment: this.config.isDevelopment,
+      isProduction: this.config.isProduction,
+      timestamp: new Date().toISOString(),
+      initialized: this.initialized,
+      rawEnvVars: {
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+        NODE_ENV: process.env.NODE_ENV
+      }
+    });
   }
 
   public getApiUrl(): string {

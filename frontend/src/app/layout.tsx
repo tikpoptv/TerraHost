@@ -4,6 +4,7 @@ import "./globals.css";
 
 import HealthCheckProvider from "@/components/HealthCheckProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import "@/utils/debugEnv";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
