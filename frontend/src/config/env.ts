@@ -18,14 +18,22 @@ class EnvironmentManager {
   }
 
   private loadEnvironmentVariables(): EnvironmentConfig {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const nodeEnv = process.env.NODE_ENV || 'development';
+    const isDevelopment = nodeEnv === 'development';
+    const isProduction = nodeEnv === 'production';
+    
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    // No fallback - environment variable is required in all modes
+    if (!apiUrl) {
+      throw new Error('NEXT_PUBLIC_API_URL environment variable is required. Please set this variable in your environment.');
+    }
     
     return {
       apiUrl,
       nodeEnv,
-      isDevelopment: nodeEnv === 'development',
-      isProduction: nodeEnv === 'production',
+      isDevelopment,
+      isProduction,
       telemetryDisabled: process.env.NEXT_TELEMETRY_DISABLED === '1'
     };
   }
@@ -41,8 +49,19 @@ class EnvironmentManager {
       errors.push('API URL must start with http or https');
     }
 
-    if (this.config.isProduction && this.config.apiUrl.includes('localhost')) {
-      console.warn('WARNING: Using localhost API URL in production environment');
+    // Strict validation for production
+    if (this.config.isProduction) {
+      if (this.config.apiUrl.includes('localhost')) {
+        errors.push('Cannot use localhost API URL in production environment');
+      }
+      
+      if (!this.config.apiUrl.startsWith('https')) {
+        errors.push('Production API URL must use HTTPS');
+      }
+      
+      if (!process.env.NEXT_PUBLIC_API_URL) {
+        errors.push('NEXT_PUBLIC_API_URL environment variable must be explicitly set in production');
+      }
     }
 
     if (errors.length > 0) {

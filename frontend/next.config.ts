@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   
   // Ensure public runtime config for dynamic variables
   publicRuntimeConfig: {
-    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL,
   },
   
   experimental: {

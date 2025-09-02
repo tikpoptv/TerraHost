@@ -4,6 +4,7 @@ import "./globals.css";
 
 import HealthCheckProvider from "@/components/HealthCheckProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import ConfigErrorBoundary from "@/components/ConfigErrorBoundary";
 import "@/utils/debugEnv";
 
 const geistSans = Geist({
@@ -31,11 +32,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <HealthCheckProvider checkOnMount={true} periodicCheck={false}>
-            {children}
-          </HealthCheckProvider>
-        </AuthProvider>
+        <ConfigErrorBoundary>
+          <AuthProvider>
+            <HealthCheckProvider checkOnMount={true} periodicCheck={false}>
+              {children}
+            </HealthCheckProvider>
+          </AuthProvider>
+        </ConfigErrorBoundary>
       </body>
     </html>
   );
