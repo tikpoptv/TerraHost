@@ -39,7 +39,27 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Optional: Set production API URL if not provided via build args
-# ENV NEXT_PUBLIC_API_URL=https://api.terrahost.com
+# Create a startup script to inject runtime environment variables
+COPY <<EOF /app/start.sh
+#!/bin/sh
 
-CMD ["node", "server.js"]
+# Create runtime config for environment variables
+echo "window.__RUNTIME_CONFIG__ = {" > /tmp/runtime-config.js
+echo "  NEXT_PUBLIC_API_URL: '\${NEXT_PUBLIC_API_URL:-http://localhost:8000}'" >> /tmp/runtime-config.js
+echo "};" >> /tmp/runtime-config.js
+
+# Replace the placeholder in any HTML files if they exist
+if [ -f "/app/public/runtime-config.js" ]; then
+  cp /tmp/runtime-config.js /app/public/runtime-config.js
+fi
+
+# Start the Next.js server
+exec node server.js
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Create placeholder runtime config file
+RUN echo "window.__RUNTIME_CONFIG__ = {};" > /app/public/runtime-config.js
+
+CMD ["/app/start.sh"]

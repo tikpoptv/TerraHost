@@ -9,13 +9,38 @@ class ApiClient {
   private baseURL: string;
   private token: string | null = null;
 
-  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') {
-    this.baseURL = baseURL;
+  constructor(baseURL?: string) {
+    // Priority: 1. Parameter, 2. Runtime env, 3. Build-time env, 4. Default
+    this.baseURL = baseURL || 
+      this.getRuntimeApiUrl() || 
+      process.env.NEXT_PUBLIC_API_URL || 
+      'http://localhost:8000';
     
     // Load token from localStorage if available
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token');
     }
+  }
+
+  // Get runtime API URL from various sources
+  private getRuntimeApiUrl(): string | null {
+    // Check if we're in browser environment
+    if (typeof window !== 'undefined') {
+      // Check for runtime environment variable in window object
+      const windowEnv = (window as Window & { __RUNTIME_CONFIG__?: { NEXT_PUBLIC_API_URL?: string } }).__RUNTIME_CONFIG__?.NEXT_PUBLIC_API_URL;
+      if (windowEnv) return windowEnv;
+      
+      // Check for meta tag with API URL
+      const metaApiUrl = document.querySelector('meta[name="api-url"]')?.getAttribute('content');
+      if (metaApiUrl) return metaApiUrl;
+    }
+    
+    // Check Node.js environment (for SSR)
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.NEXT_PUBLIC_API_URL || null;
+    }
+    
+    return null;
   }
 
   // Set JWT token
@@ -83,7 +108,7 @@ class ApiClient {
       let data;
       try {
         data = await response.json();
-      } catch (jsonError) {
+      } catch {
         data = null;
       }
 
