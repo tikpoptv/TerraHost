@@ -533,6 +533,17 @@ class FileService {
         if (extractedData.success) {
           console.log(`✅ Data extraction successful`);
           
+          // Check if extraction actually succeeded (has spatial_info)
+          if (extractedData.data.error) {
+            console.log(`❌ Python extraction failed:`, extractedData.data.error);
+            throw new Error(`Python extraction failed: ${extractedData.data.error}`);
+          }
+          
+          if (!extractedData.data.spatial_info) {
+            console.log(`❌ No spatial_info in extracted data`);
+            throw new Error(`No spatial_info in extracted data. Keys: ${Object.keys(extractedData.data).join(', ')}`);
+          }
+          
           // Update session progress to 70%
           await this.updateProcessingSession(processingSessionId, 'processing', null, null, 70, 'Python extraction completed, saving data to database...');
           
@@ -691,13 +702,11 @@ class FileService {
       // Path to Python script
      const scriptPath = path.join(__dirname, '..', '..', 'scripts', 'geotiff_extractor.py');
       
-      // Spawn Python process - use system python in Docker, venv in local
-      const isDocker = process.env.NODE_ENV === 'production' || process.env.DOCKER === 'true';
-      const pythonPath = isDocker ? 'python3' : path.join(__dirname, '..', '..', 'venv', 'bin', 'python');
+      // Spawn Python process - always use venv python (both local and Docker)
+      const pythonPath = path.join(__dirname, '..', '..', 'venv', 'bin', 'python');
       
       // Debug logging
       console.log('🔍 Debug Python Process:');
-      console.log('  - Is Docker:', isDocker);
       console.log('  - Python Path:', pythonPath);
       console.log('  - Script Path:', scriptPath);
       console.log('  - File Path:', filePath);
