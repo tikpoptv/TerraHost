@@ -1,8 +1,14 @@
-FROM node:20-bookworm-slim AS base
+FROM debian:bookworm-slim AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
+# ติดตั้ง Node.js 20
+RUN apt-get update \
+ && apt-get install -y curl gnupg \
+ && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y nodejs
+
 # ติดตั้ง system GDAL + dev headers + build tools
-RUN apt-get update -o Acquire::Retries=5 \
+RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv python3-dev \
     gdal-bin libgdal-dev \
