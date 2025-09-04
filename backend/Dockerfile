@@ -24,9 +24,12 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
 
-# Install Python dependencies
+# Create Python virtual environment and install dependencies
 COPY requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Production image
 FROM base AS runner
@@ -41,8 +44,11 @@ RUN adduser --system --uid 1001 nodejs
 
 # Copy dependencies and source code
 COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=deps --chown=nodejs:nodejs /usr/lib/python3.*/site-packages /usr/lib/python3.11/site-packages
+COPY --from=deps --chown=nodejs:nodejs /opt/venv /opt/venv
 COPY --chown=nodejs:nodejs . .
+
+# Set Python virtual environment path
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Make Python scripts executable
 RUN chmod +x scripts/*.py
