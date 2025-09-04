@@ -39,23 +39,23 @@ class StatsService {
    */
   async getFileStats(userId) {
     try {
-      // Get total GeoTIFF files count
+      // Get total GeoTIFF files count (shared across users)
       const totalFilesQuery = `
         SELECT COUNT(*) as total_files
         FROM geotiff_files 
-        WHERE user_id = $1
+        WHERE deleted_at IS NULL
       `;
       
-      // Get uploaded files count (all file types)
+      // Get uploaded files count (all file types, shared across users)
       const uploadedFilesQuery = `
         SELECT COUNT(*) as uploaded_files
         FROM geotiff_files 
-        WHERE user_id = $1
+        WHERE deleted_at IS NULL
       `;
 
       const [totalFilesResult, uploadedFilesResult] = await Promise.all([
-        this.db.executeQuery(totalFilesQuery, [userId]),
-        this.db.executeQuery(uploadedFilesQuery, [userId])
+        this.db.executeQuery(totalFilesQuery, []),
+        this.db.executeQuery(uploadedFilesQuery, [])
       ]);
 
       return {
@@ -73,23 +73,22 @@ class StatsService {
    */
   async getProcessingStats(userId) {
     try {
-      // Get total processing jobs count
+      // Get total processing jobs count (shared across users)
       const totalJobsQuery = `
         SELECT COUNT(*) as total_jobs
         FROM processing_jobs 
-        WHERE user_id = $1
       `;
       
-      // Get active processing jobs count
+      // Get active processing jobs count (shared across users)
       const activeJobsQuery = `
         SELECT COUNT(*) as active_jobs
         FROM processing_jobs 
-        WHERE user_id = $1 AND status IN ('queued', 'processing')
+        WHERE status IN ('queued', 'processing')
       `;
 
       const [totalJobsResult, activeJobsResult] = await Promise.all([
-        this.db.executeQuery(totalJobsQuery, [userId]),
-        this.db.executeQuery(activeJobsQuery, [userId])
+        this.db.executeQuery(totalJobsQuery, []),
+        this.db.executeQuery(activeJobsQuery, [])
       ]);
 
       return {
@@ -107,21 +106,22 @@ class StatsService {
    */
   async getStorageStats(userId) {
     try {
-      // Get total storage used by user
+      // Get total storage used (shared across users)
       const storageUsedQuery = `
         SELECT COALESCE(SUM(file_size), 0) as storage_used
         FROM geotiff_files 
-        WHERE user_id = $1
+        WHERE deleted_at IS NULL
       `;
       
       // Get total space available (this could be from user plan or system limit)
       const totalSpaceQuery = `
         SELECT COALESCE(SUM(file_size), 0) as total_space
         FROM geotiff_files
+        WHERE deleted_at IS NULL
       `;
 
       const [storageUsedResult, totalSpaceResult] = await Promise.all([
-        this.db.executeQuery(storageUsedQuery, [userId]),
+        this.db.executeQuery(storageUsedQuery, []),
         this.db.executeQuery(totalSpaceQuery, [])
       ]);
 
@@ -145,24 +145,23 @@ class StatsService {
    */
   async getExtractionStats(userId) {
     try {
-      // Get completed extractions count
+      // Get completed extractions count from processing_sessions (shared across users)
       const completedExtractionsQuery = `
         SELECT COUNT(*) as completed_extractions
-        FROM processing_jobs 
-        WHERE user_id = $1 AND status = 'completed'
+        FROM processing_sessions 
+        WHERE status = 'completed'
       `;
       
-      // Get total data extracted (sum of extracted data sizes from job_results)
+      // Get total data extracted (sum of file sizes from completed processing sessions, shared across users)
       const dataExtractedQuery = `
-        SELECT COALESCE(SUM(jr.file_size), 0) as data_extracted
-        FROM processing_jobs pj
-        JOIN job_results jr ON pj.id = jr.job_id
-        WHERE pj.user_id = $1 AND pj.status = 'completed'
+        SELECT COALESCE(SUM(ps.original_file_size), 0) as data_extracted
+        FROM processing_sessions ps
+        WHERE ps.status = 'completed'
       `;
 
       const [completedResult, dataExtractedResult] = await Promise.all([
-        this.db.executeQuery(completedExtractionsQuery, [userId]),
-        this.db.executeQuery(dataExtractedQuery, [userId])
+        this.db.executeQuery(completedExtractionsQuery, []),
+        this.db.executeQuery(dataExtractedQuery, [])
       ]);
 
       const dataExtracted = dataExtractedResult.data?.[0]?.data_extracted || 0;
