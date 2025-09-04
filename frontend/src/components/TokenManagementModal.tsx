@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import tokenService, { ApiKey, CreateApiKeyRequest } from '@/services/tokenService';
+import envConfig from '@/config/env';
 
 interface TokenManagementModalProps {
   isOpen: boolean;
@@ -21,11 +22,21 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load API keys on mount
+  // Load API keys on mount and prevent body scroll
   useEffect(() => {
     if (isOpen) {
       loadApiKeys();
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restore body scroll when modal is closed
+      document.body.style.overflow = 'unset';
     }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   // Load API keys
@@ -40,8 +51,9 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
       } else {
         setError(response.error || 'Failed to load API keys');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Failed to load API keys');
+      console.error('Error loading API keys:', error);
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +87,9 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
       } else {
         setError(response.error || 'Failed to create API key');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Failed to create API key');
+      console.error('Error creating API key:', error);
     } finally {
       setIsCreating(false);
     }
@@ -84,7 +97,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
 
   // Handle delete API key
   const handleDeleteApiKey = async (apiKeyId: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบ API key นี้?')) {
+    if (!confirm('Are you sure you want to delete this API key?')) {
       return;
     }
 
@@ -95,8 +108,9 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
       } else {
         setError(response.error || 'Failed to delete API key');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Failed to delete API key');
+      console.error('Error deleting API key:', error);
     }
   };
 
@@ -109,8 +123,9 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
       } else {
         setError(response.error || 'Failed to update API key status');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Failed to update API key status');
+      console.error('Error updating API key status:', error);
     }
   };
 
@@ -146,13 +161,13 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">🔑 จัดการ API Keys</h2>
-            <p className="text-gray-600 mt-1">สร้างและจัดการ API keys สำหรับการเข้าถึงจากภายนอก</p>
+            <h2 className="text-2xl font-bold text-gray-900">🔑 Manage API Keys</h2>
+            <p className="text-gray-600 mt-1">Create and manage API keys for external access</p>
           </div>
           <button
             onClick={onClose}
@@ -176,7 +191,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span>สร้าง API Key ใหม่</span>
+                <span>Create New API Key</span>
               </div>
             </button>
           </div>
@@ -184,13 +199,13 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
           {/* Create Form */}
           {showCreateForm && (
             <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">สร้าง API Key ใหม่</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New API Key</h3>
               
               <div className="space-y-4">
                 {/* Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ชื่อ API Key *
+                    API Key Name *
                   </label>
                   <input
                     type="text"
@@ -204,7 +219,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                 {/* Expires At */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    วันหมดอายุ (ไม่บังคับ)
+                    Expiration Date (Optional)
                   </label>
                   <input
                     type="datetime-local"
@@ -217,37 +232,53 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                 {/* Permissions */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    สิทธิ์การใช้งาน *
+                    Permissions *
                   </label>
                   <div className="space-y-3">
-                    {tokenService.getPermissionGroups().map((group) => (
-                      <div key={group.name} className="border border-gray-200 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 mb-2">{group.name}</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {group.permissions.map((permission) => {
-                            const permissionInfo = tokenService.getAvailablePermissions().find(p => p.value === permission);
-                            return (
-                              <label key={permission} className="flex items-start space-x-3">
-                                <input
-                                  type="checkbox"
-                                  checked={newApiKey.permissions.includes(permission)}
-                                  onChange={() => handlePermissionToggle(permission)}
-                                  className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                                <div className="flex-1">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {permissionInfo?.label || permission}
+                    {tokenService.getPermissionGroups().map((group) => {
+                      const isDisabled = group.name === 'File Management' || group.name === 'System Management';
+                      return (
+                        <div key={group.name} className={`border rounded-lg p-4 ${isDisabled ? 'border-gray-300 bg-gray-50' : 'border-gray-200'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900">{group.name}</h4>
+                            {isDisabled && (
+                              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
+                                Coming Soon
+                              </span>
+                            )}
+                          </div>
+                          {isDisabled && (
+                            <p className="text-xs text-gray-500 mb-3">
+                              This feature is not yet available for use
+                            </p>
+                          )}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {group.permissions.map((permission) => {
+                              const permissionInfo = tokenService.getAvailablePermissions().find(p => p.value === permission);
+                              return (
+                                <label key={permission} className={`flex items-start space-x-3 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={newApiKey.permissions.includes(permission)}
+                                    onChange={() => !isDisabled && handlePermissionToggle(permission)}
+                                    disabled={isDisabled}
+                                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {permissionInfo?.label || permission}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {permissionInfo?.description}
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-gray-500">
-                                    {permissionInfo?.description}
-                                  </div>
-                                </div>
-                              </label>
-                            );
-                          })}
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -258,13 +289,13 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                     disabled={isCreating}
                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                   >
-                    {isCreating ? 'กำลังสร้าง...' : 'สร้าง API Key'}
+                    {isCreating ? 'Creating...' : 'Create API Key'}
                   </button>
                   <button
                     onClick={resetForm}
                     className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                   >
-                    ยกเลิก
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -279,18 +310,44 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div className="flex-1">
-                  <h4 className="font-medium text-green-900 mb-2">API Key สร้างสำเร็จ!</h4>
+                  <h4 className="font-medium text-green-900 mb-2">API Key Created Successfully!</h4>
                   <p className="text-sm text-green-700 mb-3">
-                    กรุณาบันทึก API Key นี้ไว้ เนื่องจากจะไม่แสดงอีกครั้ง
+                    Please save this API Key as it will not be shown again
                   </p>
-                  <div className="bg-white border border-green-300 rounded-lg p-3">
+                  
+                  {/* API Key */}
+                  <div className="bg-white border border-green-300 rounded-lg p-3 mb-4">
+                    <div className="text-xs text-gray-600 mb-1">API Key:</div>
                     <code className="text-sm text-green-800 break-all">{createdApiKey}</code>
                   </div>
+
+                  {/* Usage Information */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <div className="text-xs text-blue-600 mb-2 font-medium">📡 How to use this API Key:</div>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="text-blue-700 font-medium">Example Endpoint:</span>
+                        <code className="ml-2 text-blue-800 bg-blue-100 px-2 py-1 rounded text-xs">
+                          GET {envConfig.getApiUrl()}/api/spatial/overview
+                        </code>
+                      </div>
+                      <div>
+                        <span className="text-blue-700 font-medium">Header:</span>
+                        <code className="ml-2 text-blue-800 bg-blue-100 px-2 py-1 rounded text-xs">
+                          X-API-Key: {createdApiKey}
+                        </code>
+                      </div>
+                      <div className="text-xs text-blue-600 mt-2">
+                        💡 This endpoint requires <code className="bg-blue-100 px-1 rounded">read:files</code> permission
+                      </div>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => setCreatedApiKey(null)}
                     className="mt-3 text-sm text-green-600 hover:text-green-800"
                   >
-                    ปิดข้อความนี้
+                    Close this message
                   </button>
                 </div>
               </div>
@@ -310,7 +367,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                     onClick={() => setError(null)}
                     className="mt-2 text-sm text-red-600 hover:text-red-800"
                   >
-                    ปิดข้อความนี้
+                    Close this message
                   </button>
                 </div>
               </div>
@@ -319,12 +376,12 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
 
           {/* API Keys List */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">API Keys ของคุณ</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your API Keys</h3>
             
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-500">กำลังโหลด API keys...</p>
+                <p className="text-gray-500">Loading API keys...</p>
               </div>
             ) : apiKeys.length === 0 ? (
               <div className="text-center py-8">
@@ -333,8 +390,8 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                   </svg>
                 </div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มี API Key</h4>
-                <p className="text-gray-500">เริ่มต้นโดยการสร้าง API Key แรกของคุณ</p>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No API Keys Yet</h4>
+                <p className="text-gray-500">Get started by creating your first API Key</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -349,13 +406,13 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
                           }`}>
-                            {apiKey.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                            {apiKey.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </div>
                         
                         {/* Permissions */}
                         <div className="mb-3">
-                          <div className="text-sm text-gray-600 mb-1">สิทธิ์:</div>
+                          <div className="text-sm text-gray-600 mb-1">Permissions:</div>
                           <div className="flex flex-wrap gap-2">
                             {apiKey.permissions.map((permission) => (
                               <span
@@ -371,18 +428,18 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                         {/* Metadata */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                           <div>
-                            <span className="font-medium">สร้างเมื่อ:</span>
+                            <span className="font-medium">Created:</span>
                             <div>{formatDate(apiKey.createdAt)}</div>
                           </div>
                           {apiKey.expiresAt && (
                             <div>
-                              <span className="font-medium">หมดอายุ:</span>
+                              <span className="font-medium">Expires:</span>
                               <div>{formatDate(apiKey.expiresAt)}</div>
                             </div>
                           )}
                           {apiKey.lastUsed && (
                             <div>
-                              <span className="font-medium">ใช้งานล่าสุด:</span>
+                              <span className="font-medium">Last Used:</span>
                               <div>{formatDate(apiKey.lastUsed)}</div>
                             </div>
                           )}
@@ -399,13 +456,13 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                               : 'bg-green-100 text-green-700 hover:bg-green-200'
                           }`}
                         >
-                          {apiKey.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                          {apiKey.isActive ? 'Disable' : 'Enable'}
                         </button>
                         <button
                           onClick={() => handleDeleteApiKey(apiKey.id)}
                           className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
                         >
-                          ลบ
+                          Delete
                         </button>
                       </div>
                     </div>

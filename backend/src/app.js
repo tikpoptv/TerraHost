@@ -6,6 +6,7 @@ const AuthController = require('./controllers/AuthController');
 const FileController = require('./controllers/FileController');
 const TokenController = require('./controllers/TokenController');
 const SpatialController = require('./controllers/SpatialController');
+const StatsController = require('./controllers/StatsController');
 
 class App {
   constructor() {
@@ -28,6 +29,7 @@ class App {
     const fileController = new FileController();
     const tokenController = new TokenController();
     const spatialController = new SpatialController();
+    const statsController = new StatsController();
 
     // Register routes
     this.app.use('/', apiController.getRouter());
@@ -36,6 +38,7 @@ class App {
     this.app.use('/files', fileController.getRouter());
     this.app.use('/tokens', tokenController.getRouter());
     this.app.use('/api/spatial', spatialController.getRouter());
+    this.app.use('/stats', statsController.getRouter());
   }
 
   listen() {
@@ -49,6 +52,10 @@ class App {
       console.log(`📍 Logout: POST http://localhost:${this.port}/auth/logout`);
       console.log(`📍 File upload: POST http://localhost:${this.port}/files/upload`);
       console.log(`📍 Get files: GET http://localhost:${this.port}/files/files`);
+      console.log(`📍 Dashboard stats: GET http://localhost:${this.port}/stats/dashboard`);
+      console.log(`📍 File stats: GET http://localhost:${this.port}/stats/files`);
+      console.log(`📍 Processing stats: GET http://localhost:${this.port}/stats/processing`);
+      console.log(`📍 Storage stats: GET http://localhost:${this.port}/stats/storage`);
     });
   }
 

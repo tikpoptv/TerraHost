@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import fileService from '@/services/fileService';
 
@@ -28,7 +28,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
   });
   const [isUploading, setIsUploading] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
-  const [uploadedFiles, setUploadedFiles] = useState<{ file: File; status: 'success' | 'error'; message: string }[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{ file: File; status: 'success' | 'error'; message: string; isFilenameError?: boolean }[]>([]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -44,14 +44,14 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
       
       if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        invalidFiles.push(`${file.name} (ไม่ใช่ไฟล์ GeoTIFF)`);
+        invalidFiles.push(`${file.name} (Not a GeoTIFF file)`);
         return;
       }
 
       // Validate file size (500MB limit)
       const maxSize = 500 * 1024 * 1024; // 500MB
       if (file.size > maxSize) {
-        invalidFiles.push(`${file.name} (ขนาดเกิน 500MB)`);
+        invalidFiles.push(`${file.name} (Size exceeds 500MB)`);
         return;
       }
 
@@ -62,7 +62,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
       setUploadProgress({
         percentage: 0,
         status: 'error',
-        message: `ไฟล์ที่ไม่ถูกต้อง: ${invalidFiles.join(', ')}`
+        message: `Invalid files: ${invalidFiles.join(', ')}`
       });
     }
 
@@ -71,7 +71,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
       setUploadProgress({
         percentage: 0,
         status: 'idle',
-        message: `เลือกไฟล์ ${validFiles.length} ไฟล์ (${(validFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024)).toFixed(2)} MB)`
+        message: `Selected ${validFiles.length} files (${(validFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024)).toFixed(2)} MB)`
       });
     }
   };
@@ -112,7 +112,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
       setUploadProgress({
         percentage: 100,
         status: 'success',
-        message: `อัพโหลดเสร็จสิ้น! ${completedFiles.filter(f => f.status === 'success').length}/${files.length} ไฟล์สำเร็จ`
+        message: `Upload completed! ${completedFiles.filter(f => f.status === 'success').length}/${files.length} files successful`
       });
 
       // Reset form and close modal after success
@@ -130,7 +130,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
     setUploadProgress({
       percentage: 0,
       status: 'uploading',
-      message: `กำลังอัพโหลดไฟล์ ${currentFileIndex + 1}/${uploadQueue.length}: ${currentFile.name}`
+      message: `Uploading file ${currentFileIndex + 1}/${uploadQueue.length}: ${currentFile.name}`
     });
 
     try {
@@ -150,9 +150,9 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
 
       clearInterval(progressInterval);
 
-      // ตรวจสอบ response ที่แท้จริง
+      // Check actual response
       if (!response) {
-        throw new Error('ไม่ได้รับ response จากเซิร์ฟเวอร์');
+        throw new Error('No response received from server');
       }
 
       if (response.success) {
@@ -161,13 +161,13 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
         setUploadedFiles(prev => [...prev, { 
           file: currentFile, 
           status: 'success', 
-          message: 'อัพโหลดสำเร็จ' 
+          message: 'Upload successful' 
         }]);
 
         setUploadProgress({
           percentage: 100,
           status: 'success',
-          message: `อัพโหลดสำเร็จ: ${currentFile.name}`
+          message: `Upload successful: ${currentFile.name}`
         });
 
         // Move to next file after a short delay
@@ -176,83 +176,82 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
           const newCompletedFiles = [...completedFiles, { 
             file: currentFile, 
             status: 'success' as const, 
-            message: 'อัพโหลดสำเร็จ' 
+            message: 'Upload successful' 
           }];
           uploadNextFile(files, fileIndex + 1, newCompletedFiles);
         }, 1000);
       } else {
         console.log('❌ Upload failed for:', currentFile.name, response.error);
         
-        // ตรวจสอบ error ที่ชัดเจน
-        let errorMessage = 'อัพโหลดล้มเหลว';
-        let errorDetails = '';
+        // Check clear error
+        let errorMessage = 'Upload failed';
         
         if (response.error) {
           errorMessage = response.error;
         }
         
         if (response.details) {
-          errorDetails = response.details;
+          console.log('Error details:', response.details);
         }
         
-        // หยุดการอัพโหลดและแสดง error
+        // Stop upload and show error
         clearInterval(progressInterval);
         setIsUploading(false);
         
         setUploadProgress({
           percentage: 0,
           status: 'error',
-          message: `อัพโหลดล้มเหลว: ${currentFile.name}`
+          message: `Upload failed: ${currentFile.name}`
         });
         
-        // เพิ่มไฟล์ในรายการ error
+        // Add file to error list
         setUploadedFiles(prev => [...prev, { 
           file: currentFile, 
           status: 'error', 
           message: errorMessage,
-          isFilenameError: errorMessage.includes('ชื่อไฟล์ไม่ถูกต้อง') || 
-                          errorMessage.includes('รูปแบบชื่อไฟล์') ||
-                          errorMessage.includes('ต้องมี _ คั่น')
+          isFilenameError: errorMessage.includes('Invalid filename') || 
+                          errorMessage.includes('filename format') ||
+                          errorMessage.includes('must have _ separator')
         }]);
         
-        // ไม่ดำเนินการต่อ
+        // Do not continue
         return;
       }
     } catch (error) {
       console.error('Upload error:', error);
       
-      // ตรวจสอบว่าเป็น error ชื่อไฟล์ผิดหรือไม่
+      // Check if it's a filename error
       const isFilenameErrorForUpload = error instanceof Error && 
-        (error.message.includes('ชื่อไฟล์ไม่ถูกต้อง') || 
-         error.message.includes('รูปแบบชื่อไฟล์') ||
-         error.message.includes('ต้องมี _ คั่น'));
+        (error.message.includes('Invalid filename') || 
+         error.message.includes('filename format') ||
+         error.message.includes('must have _ separator'));
 
       setUploadedFiles(prev => [...prev, { 
         file: currentFile, 
         status: 'error', 
-        message: error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
         isFilenameError: isFilenameErrorForUpload
       }]);
 
-      // ตรวจสอบว่าเป็น error ชื่อไฟล์ผิดหรือไม่
+      // Check if it's a filename error
       const isFilenameError = error instanceof Error && 
-        (error.message.includes('ชื่อไฟล์ไม่ถูกต้อง') || 
-         error.message.includes('รูปแบบชื่อไฟล์') ||
-         error.message.includes('ต้องมี _ คั่น'));
+        (error.message.includes('Invalid filename') || 
+         error.message.includes('filename format') ||
+         error.message.includes('must have _ separator'));
 
       setUploadProgress({
         percentage: 0,
         status: 'error',
         message: isFilenameError 
-          ? `ชื่อไฟล์ไม่ถูกต้อง: ${currentFile.name}`
-          : `อัพโหลดล้มเหลว: ${currentFile.name}`
+          ? `Invalid filename: ${currentFile.name}`
+          : `Upload failed: ${currentFile.name}`
       });
 
-      // หยุดการอัพโหลดเมื่อเกิด error
+      // Stop upload when error occurs
       console.log('❌ Stopping upload due to error');
       setIsUploading(false);
       
-      // ไม่ดำเนินการต่อ ให้ผู้ใช้แก้ไขปัญหาเอง
+      // Do not continue, let user fix the issue
       return;
     }
   };
@@ -261,7 +260,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
     event.preventDefault();
     const files = event.dataTransfer.files;
     if (files.length > 0) {
-      const file = files[0];
+      // Process the first file from the drop event
       if (fileInputRef.current) {
         fileInputRef.current.files = files;
         handleFileSelect({ target: { files } } as React.ChangeEvent<HTMLInputElement>);
@@ -294,6 +293,20 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
     onClose();
   };
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -301,7 +314,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-white/20">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/20 bg-gradient-to-r from-white/10 to-white/5">
-          <h2 className="text-2xl font-bold text-gray-900">อัพโหลดไฟล์ GeoTIFF</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Upload GeoTIFF Files</h2>
           <button
             onClick={handleClose}
             className="text-gray-500 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-white/20"
@@ -333,13 +346,13 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
             
             <div className="mb-4">
               <p className="text-lg font-medium text-gray-900">
-                {selectedFiles.length > 0 ? `เลือกไฟล์ ${selectedFiles.length} ไฟล์แล้ว` : 'ลากไฟล์มาที่นี่ หรือคลิกเพื่อเลือกไฟล์'}
+                {selectedFiles.length > 0 ? `Selected ${selectedFiles.length} files` : 'Drag files here or click to select files'}
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                รองรับไฟล์ GeoTIFF (.tiff, .tif) ขนาดไม่เกิน 500MB
+                Supports GeoTIFF files (.tiff, .tif) up to 500MB
               </p>
               <p className="text-xs text-blue-600 mt-1 font-medium">
-                รูปแบบชื่อไฟล์: NAME_YYYYMMDD.tif (เช่น MCD18A1_20250605.tif)
+                Filename format: NAME_YYYYMMDD.tif (e.g., MCD18A1_20250605.tif)
               </p>
             </div>
 
@@ -358,14 +371,48 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
               disabled={isUploading}
               className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm"
             >
-              {selectedFiles.length > 0 ? 'เพิ่มไฟล์' : 'เลือกไฟล์'}
+              {selectedFiles.length > 0 ? 'Add Files' : 'Select Files'}
             </button>
           </div>
+
+          {/* Uploaded Files Status */}
+          {uploadedFiles.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <h4 className="font-medium text-gray-900">Upload Status:</h4>
+              {uploadedFiles.map((uploadedFile, index) => (
+                <div key={index} className={`p-3 rounded-lg border ${
+                  uploadedFile.status === 'success' 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-center space-x-2">
+                    <span className={`text-sm font-medium ${
+                      uploadedFile.status === 'success' ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {uploadedFile.file.name}
+                    </span>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      uploadedFile.status === 'success' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {uploadedFile.status === 'success' ? 'Success' : 'Failed'}
+                    </span>
+                  </div>
+                  <p className={`text-xs mt-1 ${
+                    uploadedFile.status === 'success' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {uploadedFile.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* File Info */}
           {selectedFiles.length > 0 && (
             <div className="mt-6 space-y-3">
-              <h4 className="font-medium text-gray-900">ไฟล์ที่เลือก:</h4>
+              <h4 className="font-medium text-gray-900">Selected Files:</h4>
               {selectedFiles.map((file, index) => (
                 <div key={index} className="p-4 bg-white/60 backdrop-blur-sm rounded-lg border border-white/30 shadow-sm hover:shadow-md transition-all duration-200">
                   <div className="flex items-center space-x-3">
@@ -377,7 +424,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900">{file.name}</h4>
                       <p className="text-sm text-gray-500">
-                        ขนาด: {(file.size / (1024 * 1024)).toFixed(2)} MB
+                        Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
                       </p>
                     </div>
                     <button
@@ -400,8 +447,8 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
             <div className="mt-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">
-                  {uploadProgress.status === 'uploading' ? 'กำลังอัพโหลด...' : 
-                   uploadProgress.status === 'success' ? 'อัพโหลดสำเร็จ' : 'อัพโหลดล้มเหลว'}
+                  {uploadProgress.status === 'uploading' ? 'Uploading...' : 
+                   uploadProgress.status === 'success' ? 'Upload successful' : 'Upload failed'}
                 </span>
                 {uploadProgress.status === 'uploading' && (
                   <span className="text-sm text-gray-500">{uploadProgress.percentage.toFixed(0)}%</span>
@@ -425,7 +472,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
                 {uploadProgress.message}
               </p>
               
-              {/* แสดงรายละเอียด error และคำแนะนำ */}
+              {/* Show error details and instructions */}
               {uploadProgress.status === 'error' && (
                 <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start space-x-2">
@@ -433,16 +480,16 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
                     <div className="flex-1">
-                      <h4 className="text-sm font-medium text-red-800 mb-1">วิธีแก้ไข</h4>
+                      <h4 className="text-sm font-medium text-red-800 mb-1">How to Fix</h4>
                       <ul className="text-xs text-red-700 space-y-1">
-                        <li>• ชื่อไฟล์ต้องมีรูปแบบ: <code className="bg-red-100 px-1 rounded">NAME_YYYYMMDD.tif</code></li>
-                        <li>• ตัวอย่างที่ถูกต้อง: <code className="bg-red-100 px-1 rounded">MCD18A1_20250605.tif</code></li>
-                        <li>• ต้องมี <code className="bg-red-100 px-1 rounded">_</code> คั่นระหว่างชื่อไฟล์และวันที่</li>
-                        <li>• วันที่ต้องเป็นรูปแบบ <code className="bg-red-100 px-1 rounded">YYYYMMDD</code> (เช่น 20250605)</li>
-                        <li>• นามสกุลไฟล์ต้องเป็น <code className="bg-red-100 px-1 rounded">.tif</code> หรือ <code className="bg-red-100 px-1 rounded">.tiff</code></li>
+                        <li>• Filename must follow format: <code className="bg-red-100 px-1 rounded">NAME_YYYYMMDD.tif</code></li>
+                        <li>• Correct example: <code className="bg-red-100 px-1 rounded">MCD18A1_20250605.tif</code></li>
+                        <li>• Must have <code className="bg-red-100 px-1 rounded">_</code> separator between filename and date</li>
+                        <li>• Date must be in format <code className="bg-red-100 px-1 rounded">YYYYMMDD</code> (e.g., 20250605)</li>
+                        <li>• File extension must be <code className="bg-red-100 px-1 rounded">.tif</code> or <code className="bg-red-100 px-1 rounded">.tiff</code></li>
                       </ul>
                       
-                      {/* ปุ่มลองใหม่ */}
+                      {/* Retry buttons */}
                       <div className="mt-3 flex space-x-2">
                         <button
                           onClick={() => {
@@ -451,7 +498,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
                           }}
                           className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors"
                         >
-                          ล้างข้อความ Error
+                          Clear Error Message
                         </button>
                         <button
                           onClick={() => {
@@ -461,7 +508,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
                           }}
                           className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-md transition-colors"
                         >
-                          ล้างทั้งหมด
+                          Clear All
                         </button>
                       </div>
                     </div>
@@ -477,11 +524,11 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-sm font-medium text-blue-800">ข้อมูลการจัดเก็บ</span>
+              <span className="text-sm font-medium text-blue-800">Storage Information</span>
             </div>
             <p className="text-sm text-blue-700 mt-2">
-              ไฟล์จะถูกอัพโหลดไปยัง Nextcloud ในโฟลเดอร์ <code className="bg-blue-100 px-1 rounded">TerraHost/GeoTIFF</code> 
-              และข้อมูลจะถูกบันทึกลงฐานข้อมูล PostgreSQL
+              Files will be uploaded to Nextcloud in the <code className="bg-blue-100 px-1 rounded">TerraHost/GeoTIFF</code> folder 
+              and data will be saved to PostgreSQL database
             </p>
           </div>
         </div>
@@ -493,7 +540,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
             disabled={isUploading}
             className="px-4 py-2 text-gray-700 bg-white/60 hover:bg-white/80 disabled:bg-white/40 disabled:text-gray-400 rounded-lg font-medium transition-all duration-200 backdrop-blur-sm border border-white/30"
           >
-            ยกเลิก
+            Cancel
           </button>
           
           <button
@@ -501,7 +548,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadSuccess }: Fi
             disabled={selectedFiles.length === 0 || isUploading}
             className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            {isUploading ? 'กำลังอัพโหลด...' : `อัพโหลดไฟล์ ${selectedFiles.length} ไฟล์`}
+            {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length} files`}
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@ import FileUploadModal from '@/components/FileUploadModal';
 import ProcessingModal from '@/components/ProcessingModal';
 import TokenManagementModal from '@/components/TokenManagementModal';
 import fileService, { GeoTIFFFile } from '@/services/fileService';
+import statsService, { DashboardStats } from '@/services/statsService';
 import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
@@ -20,13 +21,11 @@ export default function DashboardPage() {
   const [isProcessingModalOpen, setIsProcessingModalOpen] = useState(false);
   const [isTokenManagementModalOpen, setIsTokenManagementModalOpen] = useState(false);
   const [files, setFiles] = useState<GeoTIFFFile[]>([]);
-  const [fileStats, setFileStats] = useState({
-    totalFiles: 0,
-    totalSize: 0,
-    processingFiles: 0,
-    processedFiles: 0
-  });
   const [isLoadingFiles, setIsLoadingFiles] = useState(true);
+  
+  // Dashboard stats state
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,6 +38,26 @@ export default function DashboardPage() {
 
   // Processing state
   const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
+
+  // Load dashboard statistics
+  const loadDashboardStats = useCallback(async () => {
+    try {
+      setIsLoadingStats(true);
+      const response = await statsService.getDashboardStats();
+      
+      if (response.success && response.data) {
+        setDashboardStats(response.data);
+      } else {
+        console.error('Failed to load dashboard stats:', response.error);
+        toast.error('Failed to load dashboard statistics');
+      }
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+      toast.error('Failed to load dashboard statistics');
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, []);
 
   const handleLogout = async () => {
     if (isLoggingOut) return; // Prevent double-click
@@ -118,24 +137,12 @@ export default function DashboardPage() {
           toast.success(`Loaded ${totalFilesCount} files successfully!`);
         }
         
-        // Override stats with 0 values (API not ready yet)
-        setFileStats({
-          totalFiles: 0,
-          totalSize: 0,
-          processingFiles: 0,
-          processedFiles: 0
-        });
+        // Stats are now loaded from API
       } else {
         // Set empty stats if no data
         setFiles([]);
         setTotalFiles(0);
         setTotalPages(1);
-        setFileStats({
-          totalFiles: 0,
-          totalSize: 0,
-          processingFiles: 0,
-          processedFiles: 0
-        });
       }
     } catch (error) {
       console.error('Failed to load files:', error);
@@ -144,12 +151,6 @@ export default function DashboardPage() {
       setFiles([]);
       setTotalFiles(0);
       setTotalPages(1);
-      setFileStats({
-        totalFiles: 0,
-        totalSize: 0,
-        processingFiles: 0,
-        processedFiles: 0
-      });
     } finally {
       setIsLoadingFiles(false);
     }
@@ -171,7 +172,7 @@ export default function DashboardPage() {
 
   // Delete file
   const handleDeleteFile = async (fileId: string) => {
-    if (confirm('คุณแน่ใจหรือไม่ที่จะลบไฟล์นี้?')) {
+    if (confirm('Are you sure you want to delete this file?')) {
       try {
         const response = await fileService.deleteFile(fileId);
         if (response.success) {
@@ -269,17 +270,18 @@ export default function DashboardPage() {
       const metadata = await fileService.getFileMetadata(fileId);
       // For now, just show alert. You can create a modal later
       toast.success(`File metadata loaded successfully!`);
-      alert(`ข้อมูลไฟล์:\nขนาด: ${metadata.spatialMetadata.dimensions.width}x${metadata.spatialMetadata.dimensions.height}\nจำนวน Bands: ${metadata.spatialMetadata.dimensions.bandsCount}`);
+      alert(`File Information:\nSize: ${metadata.spatialMetadata.dimensions.width}x${metadata.spatialMetadata.dimensions.height}\nNumber of Bands: ${metadata.spatialMetadata.dimensions.bandsCount}`);
     } catch (error) {
       console.error('Error getting metadata:', error);
       toast.error('Failed to load file metadata');
     }
   };
 
-  // Load files on component mount
+  // Load files and stats on component mount
   useEffect(() => {
     loadUserFiles();
-  }, [loadUserFiles]);
+    loadDashboardStats();
+  }, [loadUserFiles, loadDashboardStats]);
 
   return (
     <ProtectedRoute requireAuth={true}>
@@ -311,7 +313,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                   {lastChecked && (
                     <div className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      เช็คล่าสุด: {new Date(lastChecked).toLocaleTimeString()}
+                      Last checked: {new Date(lastChecked).toLocaleTimeString()}
                     </div>
                   )}
                   <button 
@@ -323,7 +325,7 @@ export default function DashboardPage() {
                         : 'bg-blue-600 hover:bg-blue-700 text-white'
                     }`}
                   >
-                    {isChecking ? 'กำลังเช็ค...' : '🔍 เช็คสถานะ'}
+                    {isChecking ? 'Checking...' : '🔍 Check Status'}
                   </button>
                   <button 
                     onClick={handleLogout}
@@ -334,7 +336,7 @@ export default function DashboardPage() {
                         : 'bg-red-600 hover:bg-red-700'
                     }`}
                   >
-                    {isLoggingOut ? 'กำลังออกจากระบบ...' : 'ออกจากระบบ'}
+                    {isLoggingOut ? 'Logging out...' : 'Logout'}
                   </button>
                 </div>
               </div>
@@ -355,23 +357,23 @@ export default function DashboardPage() {
                       </svg>
                     </div>
                     <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-                      ยินดีต้อนรับสู่ TerraHost
+                      Welcome to TerraHost
                     </h2>
                     <p className="text-gray-600 text-lg mb-4">
-                      ระบบจัดการข้อมูล GeoTIFF และการประมวลผลข้อมูลดาวเทียม
+                      GeoTIFF Data Management and Satellite Data Processing System
                     </p>
                     {user && (
                       <div className="mb-4 hidden sm:block">
                         <div className="inline-flex items-center space-x-4 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-lg">
                           <span><strong>ID:</strong> {user.id}</span>
-                          <span><strong>อีเมล:</strong> {user.email}</span>
-                          <span><strong>บทบาท:</strong> {user.role}</span>
+                          <span><strong>Email:</strong> {user.email}</span>
+                          <span><strong>Role:</strong> {user.role}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             user.is_active 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
                           }`}>
-                            {user.is_active ? 'ใช้งานได้' : 'ไม่ใช้งาน'}
+                            {user.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </div>
                       </div>
@@ -384,7 +386,7 @@ export default function DashboardPage() {
               {/* GeoTIFF Statistics */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div 
-                  onClick={() => toast.success('GeoTIFF Files: ' + (isLoadingFiles ? '...' : fileStats.totalFiles))}
+                  onClick={() => toast.success('GeoTIFF Files: ' + (isLoadingStats ? '...' : dashboardStats?.files.totalGeoTiffFiles || 0))}
                   className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
                 >
                   <div className="flex items-center">
@@ -396,7 +398,7 @@ export default function DashboardPage() {
                     <div className="ml-4">
                       <h3 className="text-lg font-semibold text-gray-900">GeoTIFF Files</h3>
                       <p className="text-3xl font-bold text-blue-600">
-                        {isLoadingFiles ? '...' : fileStats.totalFiles}
+                        {isLoadingStats ? '...' : dashboardStats?.files.totalGeoTiffFiles || 0}
                       </p>
                       <p className="text-sm text-gray-500">Uploaded Files</p>
                     </div>
@@ -405,7 +407,7 @@ export default function DashboardPage() {
                 
                 <div 
                   onClick={() => {
-                    toast.success('Processing Jobs: ' + (isLoadingFiles ? '...' : fileStats.processingFiles));
+                    toast.success('Processing Jobs: ' + (isLoadingStats ? '...' : dashboardStats?.processing.totalJobs || 0));
                     setIsProcessingModalOpen(true);
                   }}
                   className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
@@ -419,7 +421,7 @@ export default function DashboardPage() {
                     <div className="ml-4">
                       <h3 className="text-lg font-semibold text-gray-900">Processing Jobs</h3>
                       <p className="text-3xl font-bold text-purple-600">
-                        {isLoadingFiles ? '...' : fileStats.processingFiles}
+                        {isLoadingStats ? '...' : dashboardStats?.processing.totalJobs || 0}
                       </p>
                       <p className="text-sm text-gray-500">Active Jobs</p>
                     </div>
@@ -427,7 +429,7 @@ export default function DashboardPage() {
                 </div>
                 
                 <div 
-                  onClick={() => toast.success('Storage Used: ' + (isLoadingFiles ? '...' : fileService.formatFileSize(fileStats.totalSize)))}
+                  onClick={() => toast.success('Storage Used: ' + (isLoadingStats ? '...' : dashboardStats?.storage.storageUsedFormatted || '0 Bytes'))}
                   className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
                 >
                   <div className="flex items-center">
@@ -439,7 +441,7 @@ export default function DashboardPage() {
                     <div className="ml-4">
                       <h3 className="text-lg font-semibold text-gray-900">Storage Used</h3>
                       <p className="text-3xl font-bold text-orange-600">
-                        {isLoadingFiles ? '...' : fileService.formatFileSize(fileStats.totalSize)}
+                        {isLoadingStats ? '...' : dashboardStats?.storage.storageUsedFormatted || '0 Bytes'}
                       </p>
                       <p className="text-sm text-gray-500">Total Space</p>
                     </div>
@@ -447,7 +449,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div 
-                  onClick={() => toast.success('Completed: ' + (isLoadingFiles ? '...' : fileStats.processedFiles))}
+                  onClick={() => toast.success('Completed: ' + (isLoadingStats ? '...' : dashboardStats?.extraction.completed || 0))}
                   className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
                 >
                   <div className="flex items-center">
@@ -459,7 +461,7 @@ export default function DashboardPage() {
                     <div className="ml-4">
                       <h3 className="text-lg font-semibold text-gray-900">Completed</h3>
                       <p className="text-3xl font-bold text-indigo-600">
-                        {isLoadingFiles ? '...' : fileStats.processedFiles}
+                        {isLoadingStats ? '...' : dashboardStats?.extraction.completed || 0}
                       </p>
                       <p className="text-sm text-gray-500">Data Extracted</p>
                     </div>
@@ -469,7 +471,7 @@ export default function DashboardPage() {
 
               {/* Quick Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">🚀 การดำเนินการด่วน</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">🚀 Quick Actions</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <button 
                     onClick={() => {
@@ -482,7 +484,7 @@ export default function DashboardPage() {
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
-                      <span>อัพโหลด GeoTIFF</span>
+                      <span>Upload GeoTIFF</span>
                     </div>
                   </button>
                   <button 
@@ -497,7 +499,7 @@ export default function DashboardPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826-3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <span>สร้างงานประมวลผล</span>
+                      <span>Create Processing Job</span>
                     </div>
                   </button>
                   <button 
@@ -511,7 +513,7 @@ export default function DashboardPage() {
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
-                      <span>จัดการ API Keys</span>
+                      <span>Manage API Keys</span>
                     </div>
                   </button>
                   <button 
@@ -522,7 +524,7 @@ export default function DashboardPage() {
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                      <span>ดูรายงาน</span>
+                      <span>View Reports</span>
                     </div>
                   </button>
                 </div>
@@ -531,7 +533,7 @@ export default function DashboardPage() {
               {/* TIFF Files List */}
               <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">📁 ไฟล์ GeoTIFF ในระบบ</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">📁 GeoTIFF Files in System</h3>
                   <button 
                     onClick={() => {
                       setIsUploadModalOpen(true);
@@ -543,7 +545,7 @@ export default function DashboardPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
-                      <span>อัพโหลดใหม่</span>
+                      <span>Upload New</span>
                     </div>
                   </button>
                 </div>
@@ -621,8 +623,8 @@ export default function DashboardPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีไฟล์ GeoTIFF</h4>
-                      <p className="text-gray-500 mb-4">เริ่มต้นโดยการอัพโหลดไฟล์ GeoTIFF ไฟล์แรกของคุณ</p>
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">No GeoTIFF Files Yet</h4>
+                      <p className="text-gray-500 mb-4">Get started by uploading your first GeoTIFF file</p>
                       <button
                         onClick={() => {
                           setIsUploadModalOpen(true);
@@ -630,7 +632,7 @@ export default function DashboardPage() {
                         }}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                       >
-                        อัพโหลดไฟล์แรก
+                        Upload First File
                       </button>
                     </div>
                   ) : (
@@ -647,7 +649,7 @@ export default function DashboardPage() {
                             <div>
                               <h4 className="font-medium text-gray-900">{file.original_filename}</h4>
                                                               <p className="text-sm text-gray-500">
-                                  ขนาด: {fileService.formatFileSize(file.file_size)} • อัพโหลด: {fileService.formatDateTime(file.created_at)}
+                                  Size: {fileService.formatFileSize(file.file_size)} • Uploaded: {fileService.formatDateTime(file.created_at)}
                                 </p>
                               <div className="flex items-center space-x-2 mt-1">
                                 <span className={`px-2 py-1 text-xs rounded-full ${statusInfo.bgColor} ${statusInfo.color}`}>
@@ -663,7 +665,7 @@ export default function DashboardPage() {
                                 <div className="mt-2">
                                   <div className="inline-flex flex-col px-3 py-2 bg-gray-50 text-gray-700 rounded-lg border border-gray-200 text-xs">
                                     <div className="text-gray-600 mb-2 font-medium">
-                                      ไฟล์นี้ผ่านการประมวลผลแล้ว {file.processing_sessions.length} ครั้ง
+                                      This file has been processed {file.processing_sessions.length} times
                                     </div>
                                     <div className="space-y-1">
                                       {file.processing_sessions.map((session) => (
@@ -678,10 +680,10 @@ export default function DashboardPage() {
                                             session.processing_status === 'failed' ? 'bg-red-100 text-red-700' :
                                             'bg-gray-100 text-gray-700'
                                           }`}>
-                                            {session.processing_status === 'completed' ? 'เสร็จสิ้น' :
-                                             session.processing_status === 'processing' ? 'กำลังประมวลผล' :
-                                             session.processing_status === 'failed' ? 'ล้มเหลว' :
-                                             session.processing_status === 'started' ? 'เริ่มต้น' :
+                                            {session.processing_status === 'completed' ? 'Completed' :
+                                             session.processing_status === 'processing' ? 'Processing' :
+                                             session.processing_status === 'failed' ? 'Failed' :
+                                             session.processing_status === 'started' ? 'Started' :
                                              session.processing_status}
                                           </span>
                                         </div>
@@ -698,7 +700,7 @@ export default function DashboardPage() {
                               <button 
                                 onClick={() => handleViewMetadata(file.id)}
                                 className="p-2 text-gray-400 hover:text-blue-600 transition-colors" 
-                                title="ดูข้อมูลที่แกะออกมา"
+                                title="View extracted data"
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -717,7 +719,7 @@ export default function DashboardPage() {
                                     ? 'text-gray-300 cursor-not-allowed'
                                     : 'text-gray-400 hover:text-green-600'
                                 }`}
-                                title={processingFiles.has(file.id) ? 'กำลังประมวลผล...' : 'เริ่มประมวลผล'}
+                                title={processingFiles.has(file.id) ? 'Processing...' : 'Start processing'}
                               >
                                 {processingFiles.has(file.id) ? (
                                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
@@ -733,7 +735,7 @@ export default function DashboardPage() {
                             {fileService.isProcessingInProgress(file.upload_status) && (
                               <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
-                                <span>กำลังประมวลผล...</span>
+                                <span>Processing...</span>
                               </div>
                             )}
 
@@ -743,13 +745,13 @@ export default function DashboardPage() {
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
-                                <span>ประมวลผลเสร็จแล้ว</span>
+                                <span>Processing completed</span>
                               </div>
                             )}
                             <button 
                               onClick={() => handleDeleteFile(file.id)}
                               className="p-2 text-gray-400 hover:text-red-600 transition-colors" 
-                              title="ลบ"
+                              title="Delete"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -767,8 +769,8 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between mt-6 px-4 py-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-in-out">
                     <div className="flex items-center text-sm text-gray-700">
                       <span>
-                        แสดง {((currentPage - 1) * filesPerPage) + 1} - {Math.min(currentPage * filesPerPage, totalFiles)} 
-                        จาก {totalFiles} ไฟล์
+                        Showing {((currentPage - 1) * filesPerPage) + 1} - {Math.min(currentPage * filesPerPage, totalFiles)} 
+                        of {totalFiles} files
                       </span>
                     </div>
                     

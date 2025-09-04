@@ -23,7 +23,7 @@ export interface CreateApiKeyResponse {
   isActive: boolean;
   expiresAt?: string;
   createdAt: string;
-  apiKey: string; // แสดงครั้งเดียว
+  apiKey: string; // Show once only
 }
 
 export interface PermissionCheckResponse {
@@ -39,7 +39,7 @@ export interface PermissionCheckResponse {
 
 class TokenService {
   /**
-   * สร้าง API key ใหม่
+   * Create new API key
    */
   async createApiKey(data: CreateApiKeyRequest): Promise<{ success: boolean; data?: CreateApiKeyResponse; error?: string }> {
     try {
@@ -55,7 +55,7 @@ class TokenService {
   }
 
   /**
-   * ดึงรายการ API key ของผู้ใช้
+   * Get user API keys list
    */
   async getUserApiKeys(): Promise<{ success: boolean; data?: ApiKey[]; error?: string }> {
     try {
@@ -71,7 +71,7 @@ class TokenService {
   }
 
   /**
-   * ลบ API key
+   * Delete API key
    */
   async deleteApiKey(apiKeyId: string): Promise<{ success: boolean; data?: { message: string }; error?: string }> {
     try {
@@ -87,7 +87,7 @@ class TokenService {
   }
 
   /**
-   * อัปเดตสถานะ API key
+   * Update API key status
    */
   async updateApiKeyStatus(apiKeyId: string, isActive: boolean): Promise<{ success: boolean; data?: { id: string; isActive: boolean }; error?: string }> {
     try {
@@ -103,7 +103,7 @@ class TokenService {
   }
 
   /**
-   * ตรวจสอบ API key (สำหรับ external API)
+   * Validate API key (for external API)
    */
   async validateApiKey(apiKey: string): Promise<{ success: boolean; data?: { userId: string; userName: string; userRole: string; permissions: string[]; apiKeyName: string }; error?: string }> {
     try {
@@ -119,7 +119,7 @@ class TokenService {
   }
 
   /**
-   * ตรวจสอบสิทธิ์
+   * Check permissions
    */
   async checkPermission(apiKey: string, permission: string): Promise<{ success: boolean; data?: PermissionCheckResponse; error?: string }> {
     try {
@@ -135,7 +135,7 @@ class TokenService {
   }
 
   /**
-   * สร้าง session token
+   * Create session token
    */
   async createSessionToken(): Promise<{ success: boolean; data?: { token: string; expiresAt: string }; error?: string }> {
     try {
@@ -151,7 +151,7 @@ class TokenService {
   }
 
   /**
-   * ตรวจสอบ session token
+   * Validate session token
    */
   async validateSessionToken(token: string): Promise<{ success: boolean; data?: { userId: string; userName: string; userRole: string }; error?: string }> {
     try {
@@ -167,7 +167,7 @@ class TokenService {
   }
 
   /**
-   * ลบ session token
+   * Delete session token
    */
   async deleteSessionToken(token: string): Promise<{ success: boolean; data?: { message: string }; error?: string }> {
     try {
@@ -183,17 +183,17 @@ class TokenService {
   }
 
   /**
-   * สิทธิ์ที่สามารถเลือกได้
+   * Available permissions
    */
   getAvailablePermissions() {
     return [
-      { value: 'read:files', label: 'อ่านรายการไฟล์', description: 'ดูรายการไฟล์ GeoTIFF' },
-      { value: 'read:metadata', label: 'อ่าน Metadata', description: 'ดูข้อมูล metadata ของไฟล์' },
-      { value: 'query:spatial', label: 'ค้นหาข้อมูลเชิงพื้นที่', description: 'ค้นหาด้วยพิกัดและขอบเขต' },
-      { value: 'write:files', label: 'อัปโหลดไฟล์', description: 'อัปโหลดไฟล์ GeoTIFF ใหม่' },
-      { value: 'process:files', label: 'ประมวลผลไฟล์', description: 'เริ่มการประมวลผลไฟล์' },
-      { value: 'delete:files', label: 'ลบไฟล์', description: 'ลบไฟล์จากระบบ' },
-      { value: 'admin:users', label: 'จัดการผู้ใช้', description: 'จัดการผู้ใช้และสิทธิ์ (Admin only)' }
+      { value: 'read:files', label: 'Read File List', description: 'View GeoTIFF file list' },
+      { value: 'read:metadata', label: 'Read Metadata', description: 'View file metadata information' },
+      { value: 'query:spatial', label: 'Spatial Data Query', description: 'Search by coordinates and boundaries' },
+      { value: 'write:files', label: 'Upload Files', description: 'Upload new GeoTIFF files' },
+      { value: 'process:files', label: 'Process Files', description: 'Start file processing' },
+      { value: 'delete:files', label: 'Delete Files', description: 'Delete files from system' },
+      { value: 'admin:users', label: 'Manage Users', description: 'Manage users and permissions (Admin only)' }
     ];
   }
 
@@ -221,15 +221,15 @@ class TokenService {
   getPermissionGroups() {
     return [
       {
-        name: 'การอ่านข้อมูล',
+        name: 'Data Reading',
         permissions: ['read:files', 'read:metadata', 'query:spatial']
       },
       {
-        name: 'การจัดการไฟล์',
+        name: 'File Management',
         permissions: ['write:files', 'process:files', 'delete:files']
       },
       {
-        name: 'การจัดการระบบ',
+        name: 'System Management',
         permissions: ['admin:users']
       }
     ];
@@ -255,15 +255,15 @@ class TokenService {
    */
   validateApiKeyName(name: string): { isValid: boolean; error?: string } {
     if (!name || name.trim().length === 0) {
-      return { isValid: false, error: 'ชื่อ API key ไม่สามารถเป็นค่าว่างได้' };
+      return { isValid: false, error: 'API key name cannot be empty' };
     }
     
     if (name.length > 255) {
-      return { isValid: false, error: 'ชื่อ API key ต้องไม่เกิน 255 ตัวอักษร' };
+      return { isValid: false, error: 'API key name must not exceed 255 characters' };
     }
 
     if (name.trim().length < 3) {
-      return { isValid: false, error: 'ชื่อ API key ต้องมีอย่างน้อย 3 ตัวอักษร' };
+      return { isValid: false, error: 'API key name must be at least 3 characters' };
     }
 
     return { isValid: true };
@@ -274,7 +274,7 @@ class TokenService {
    */
   validatePermissions(permissions: string[]): { isValid: boolean; error?: string } {
     if (!permissions || permissions.length === 0) {
-      return { isValid: false, error: 'ต้องเลือกสิทธิ์อย่างน้อย 1 สิทธิ์' };
+      return { isValid: false, error: 'Must select at least 1 permission' };
     }
 
     const availablePermissions = this.getAvailablePermissions().map(p => p.value);
@@ -283,7 +283,7 @@ class TokenService {
     if (invalidPermissions.length > 0) {
       return { 
         isValid: false, 
-        error: `สิทธิ์ที่ไม่ถูกต้อง: ${invalidPermissions.join(', ')}` 
+        error: `Invalid permissions: ${invalidPermissions.join(', ')}` 
       };
     }
 

@@ -18,12 +18,22 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
   const [completedFiles, setCompletedFiles] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load unprocessed files when modal opens
+  // Load unprocessed files when modal opens and prevent body scroll
   useEffect(() => {
     if (isOpen) {
       loadUnprocessedFiles();
       toast.success('Processing modal opened');
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restore body scroll when modal is closed
+      document.body.style.overflow = 'unset';
     }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   // Load files that haven't been processed yet
