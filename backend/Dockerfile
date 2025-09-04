@@ -1,5 +1,5 @@
 # Multi-stage build for Node.js + Python
-FROM python:3.11-slim AS base
+FROM python:3.11-slim-bookworm AS base
 
 # Install system dependencies for Node.js and GDAL
 RUN apt-get update && apt-get install -y \
