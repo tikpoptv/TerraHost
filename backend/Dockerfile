@@ -1,18 +1,20 @@
 # Multi-stage build for Node.js + Python
-FROM node:20-bullseye-slim AS base
+FROM python:3.11-slim AS base
 
-# Install system dependencies for Python and GDAL
+# Install system dependencies for Node.js and GDAL
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
+    curl \
+    wget \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get install -y \
     gdal-bin \
     libgdal-dev \
     libgeos-dev \
     libproj-dev \
     libsqlite3-dev \
     build-essential \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies only when needed
