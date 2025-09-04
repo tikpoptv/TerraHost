@@ -172,7 +172,7 @@ class FileService {
     }
   }
 
-  // Get user's files
+  // Get all files (shared across users)
   async getUserFiles(userId, options = {}) {
     try {
       const { page = 1, limit = 20, status, search, session_status } = options;
@@ -185,11 +185,11 @@ class FileService {
           fs.name as storage_name
         FROM geotiff_files gf
         LEFT JOIN file_storage fs ON gf.storage_id = fs.id
-        WHERE gf.user_id = $1
+        WHERE gf.deleted_at IS NULL
       `;
       
-      const queryParams = [userId];
-      let paramIndex = 2;
+      const queryParams = [];
+      let paramIndex = 1;
 
       if (status) {
         query += ` AND gf.upload_status = $${paramIndex}`;
@@ -261,11 +261,11 @@ class FileService {
       let countQuery = `
         SELECT COUNT(*) as total
         FROM geotiff_files gf
-        WHERE gf.user_id = $1
+        WHERE gf.deleted_at IS NULL
       `;
       
-      const countParams = [userId];
-      let countParamIndex = 2;
+      const countParams = [];
+      let countParamIndex = 1;
 
       if (status) {
         countQuery += ` AND gf.upload_status = $${countParamIndex}`;
@@ -318,7 +318,7 @@ class FileService {
     }
   }
 
-  // Get specific file details
+  // Get specific file details (shared across users)
   async getFileDetails(userId, fileId) {
     try {
       const query = `
@@ -329,10 +329,10 @@ class FileService {
           fs.name as storage_name, fs.storage_type
         FROM geotiff_files gf
         LEFT JOIN file_storage fs ON gf.storage_id = fs.id
-        WHERE gf.id = $1 AND gf.user_id = $2
+        WHERE gf.id = $1 AND gf.deleted_at IS NULL
       `;
       
-      const result = await this.db.executeQuery(query, [fileId, userId]);
+      const result = await this.db.executeQuery(query, [fileId]);
 
       if (result.data.length === 0) {
         return {
@@ -448,9 +448,9 @@ class FileService {
         }
       }
 
-      // Delete from database
-      const query = 'DELETE FROM geotiff_files WHERE id = $1 AND user_id = $2';
-      await this.db.query(query, [fileId, userId]);
+      // Delete from database (soft delete - shared across users)
+      const query = 'UPDATE geotiff_files SET deleted_at = NOW() WHERE id = $1';
+      await this.db.query(query, [fileId]);
 
       return {
         success: true,

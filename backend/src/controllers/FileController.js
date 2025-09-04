@@ -120,10 +120,10 @@ class FileController extends BaseController {
     }
   }
 
-  // Get user's files
+  // Get all files (shared across users)
   async getUserFiles(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.id; // Keep for compatibility but not used in filtering
       const { page = 1, limit = 20, status, search, session_status } = req.query;
 
       const result = await this.fileService.getUserFiles(userId, {
@@ -148,10 +148,10 @@ class FileController extends BaseController {
     }
   }
 
-  // Get specific file details
+  // Get specific file details (shared across users)
   async getFileDetails(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.id; // Keep for compatibility but not used in filtering
       const { fileId } = req.params;
 
       const result = await this.fileService.getFileDetails(userId, fileId);
@@ -177,10 +177,10 @@ class FileController extends BaseController {
     }
   }
 
-  // Delete file
+  // Delete file (shared across users)
   async deleteFile(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.id; // Keep for compatibility but not used in filtering
       const { fileId } = req.params;
 
       const result = await this.fileService.deleteFile(userId, fileId);
