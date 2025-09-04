@@ -22,7 +22,7 @@ VALUES ('001_init_database.sql', 'Initialize database with PostGIS', 'init_001')
 
 -- Create enum types
 CREATE TYPE user_role AS ENUM ('admin', 'user', 'viewer');
-CREATE TYPE upload_status AS ENUM ('pending', 'uploading', 'processing', 'completed', 'failed');
+CREATE TYPE upload_status AS ENUM ('pending', 'uploading', 'processing', 'completed', 'processed', 'failed');
 CREATE TYPE job_status AS ENUM ('queued', 'running', 'completed', 'failed', 'cancelled');
 CREATE TYPE job_type AS ENUM ('layer_extraction', 'format_conversion', 'analysis', 'thumbnail_generation');
 

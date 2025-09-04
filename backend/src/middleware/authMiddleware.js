@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const DatabaseService = require('../services/DatabaseService');
 
+// DatabaseService is already an instance
+const databaseService = DatabaseService;
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 class AuthMiddleware {
@@ -29,7 +32,7 @@ class AuthMiddleware {
       }
 
       // Check if user still exists and is active
-      const userResult = await DatabaseService.findById('users', decoded.userId);
+      const userResult = await databaseService.findById('users', decoded.userId);
       
       if (!userResult.success || !userResult.data) {
         return res.status(401).json({
@@ -55,7 +58,7 @@ class AuthMiddleware {
         });
       }
 
-      const sessionResult = await DatabaseService.findById('user_sessions', decoded.sessionId);
+      const sessionResult = await databaseService.findById('user_sessions', decoded.sessionId);
       
       if (!sessionResult.success || !sessionResult.data) {
         return res.status(401).json({

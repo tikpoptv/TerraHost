@@ -115,6 +115,7 @@ migrations=(
     "005_create_system_monitoring.sql"
     "006_add_pixel_data_storage.sql"
     "007_add_soft_delete_activation.sql"
+    "008_add_comprehensive_raw_data_storage.sql"
 )
 
 new_migrations_count=0

@@ -149,15 +149,23 @@ class ApiClient {
     });
   }
 
+  // PATCH request
+  async patch<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
   // DELETE request
   async delete<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
   // File upload
-  async upload<T = unknown>(endpoint: string, file: File): Promise<ApiResponse<T>> {
+  async upload<T = unknown>(endpoint: string, file: File, fieldName: string = 'file'): Promise<ApiResponse<T>> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append(fieldName, file);
 
     const headers: Record<string, string> = {};
     

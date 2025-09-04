@@ -33,6 +33,9 @@ CREATE TABLE geotiff_files (
     upload_progress INTEGER DEFAULT 0, -- 0-100
     error_message TEXT,
     
+    -- GeoTIFF date information
+    acquisition_date DATE, -- วันที่ถ่ายภาพจาก GeoTIFF metadata
+    
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -96,6 +99,7 @@ CREATE INDEX idx_geotiff_files_user_id ON geotiff_files(user_id);
 CREATE INDEX idx_geotiff_files_status ON geotiff_files(upload_status);
 CREATE INDEX idx_geotiff_files_created_at ON geotiff_files(created_at);
 CREATE INDEX idx_geotiff_files_filename ON geotiff_files(filename);
+CREATE INDEX idx_geotiff_files_acquisition_date ON geotiff_files(acquisition_date);
 
 CREATE INDEX idx_file_uploads_user_id ON file_uploads(user_id);
 CREATE INDEX idx_file_uploads_session ON file_uploads(upload_session_id);
@@ -113,6 +117,7 @@ CREATE TRIGGER update_geotiff_files_updated_at
 -- Comments
 COMMENT ON TABLE file_storage IS 'Storage backend configurations (local, cloud, etc.)';
 COMMENT ON TABLE geotiff_files IS 'Registry of uploaded GeoTIFF files';
+COMMENT ON COLUMN geotiff_files.acquisition_date IS 'วันที่ถ่ายภาพจาก GeoTIFF metadata (YYYY-MM-DD)';
 COMMENT ON TABLE file_uploads IS 'Chunked upload session tracking';
 COMMENT ON TABLE spatial_metadata IS 'Spatial and raster metadata extracted from GeoTIFF files';
 
