@@ -19,9 +19,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Create virtual environment and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m venv /app/venv \
+    && /app/venv/bin/pip install --upgrade pip \
+    && /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
+    && chmod +x /app/venv/bin/python
 
 # Install Node.js
 RUN apt-get update && apt-get install -y curl \
@@ -61,7 +64,8 @@ ENV PORT=8000 \
     HOST=0.0.0.0 \
     PYTHONPATH=/app/scripts \
     GDAL_DATA=/usr/share/gdal \
-    PROJ_LIB=/usr/share/proj
+    PROJ_LIB=/usr/share/proj \
+    PATH="/app/venv/bin:$PATH"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
