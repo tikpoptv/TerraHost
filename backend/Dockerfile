@@ -1,14 +1,19 @@
 FROM node:18-bookworm-slim AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ติดตั้งระบบพื้นฐาน + เครื่องมือ build + GDAL (ใช้ HTTPS เหมือน server)
+# ติดตั้งระบบพื้นฐาน + เครื่องมือ build + GDAL (แก้ไข SSL certificate)
 RUN set -eux; \
+    echo "deb http://deb.debian.org/debian bookworm main" > /etc/apt/sources.list; \
+    echo "deb http://deb.debian.org/debian bookworm-updates main" >> /etc/apt/sources.list; \
+    echo "deb http://security.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list; \
+    apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30; \
+    apt-get install -y --no-install-recommends ca-certificates; \
     echo "deb https://ftp.debian.org/debian/ bookworm contrib main non-free non-free-firmware" > /etc/apt/sources.list; \
     echo "deb https://ftp.debian.org/debian/ bookworm-updates contrib main non-free non-free-firmware" >> /etc/apt/sources.list; \
     echo "deb https://security.debian.org/debian-security/ bookworm-security contrib main non-free non-free-firmware" >> /etc/apt/sources.list; \
     apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30; \
     apt-get install -y --no-install-recommends \
-        ca-certificates curl wget gnupg \
+        curl wget gnupg \
         python3 python3-pip python3-venv python3-dev \
         build-essential pkg-config \
         gdal-bin libgdal-dev libproj-dev libgeos-dev libsqlite3-dev; \
