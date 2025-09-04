@@ -21,11 +21,15 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 # Python deps
 COPY requirements.txt ./
-RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel \
- && pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+ && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy source
 COPY . .
+
+# Set Python virtual environment path
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Non-root user
 RUN addgroup --system --gid 1001 nodejs \
