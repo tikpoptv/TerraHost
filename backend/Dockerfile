@@ -44,6 +44,12 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy application code
 COPY . .
 
+# Ensure scripts directory exists and has correct permissions
+RUN mkdir -p /app/scripts \
+    && ls -la /app/scripts/ \
+    && chmod +x /app/scripts/geotiff_extractor.py \
+    && ls -la /app/scripts/geotiff_extractor.py
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nodejs
