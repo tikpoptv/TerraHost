@@ -24,12 +24,14 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
 
-# Create Python virtual environment and install dependencies
+# Install Python dependencies using system packages where possible
 COPY requirements.txt ./
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN apk add --no-cache \
+    py3-numpy \
+    py3-pillow \
+    py3-requests \
+    py3-pip \
+    && pip3 install --break-system-packages --no-cache-dir -r requirements.txt
 
 # Production image
 FROM base AS runner
