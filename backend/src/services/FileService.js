@@ -691,11 +691,13 @@ class FileService {
       // Path to Python script
      const scriptPath = path.join(__dirname, '..', '..', 'scripts', 'geotiff_extractor.py');
       
-      // Spawn Python process using virtual environment
-      const pythonPath = path.join(__dirname, '..', '..', 'venv', 'bin', 'python');
+      // Spawn Python process - use system python in Docker, venv in local
+      const isDocker = process.env.NODE_ENV === 'production' || process.env.DOCKER === 'true';
+      const pythonPath = isDocker ? 'python3' : path.join(__dirname, '..', '..', 'venv', 'bin', 'python');
       
       // Debug logging
       console.log('🔍 Debug Python Process:');
+      console.log('  - Is Docker:', isDocker);
       console.log('  - Python Path:', pythonPath);
       console.log('  - Script Path:', scriptPath);
       console.log('  - File Path:', filePath);

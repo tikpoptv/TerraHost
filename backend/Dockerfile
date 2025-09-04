@@ -48,6 +48,9 @@ COPY src/ ./src/
 RUN mkdir -p /app/scripts
 COPY scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
 
+# Make script executable
+RUN chmod +x /app/scripts/geotiff_extractor.py
+
 # Alternative: Create a simple test script to verify the directory works
 RUN echo '#!/usr/bin/env python3' > /app/scripts/test_script.py \
     && echo 'import sys' >> /app/scripts/test_script.py \
@@ -94,7 +97,8 @@ ENV PORT=8000 \
     PYTHONPATH=/app/scripts \
     GDAL_DATA=/usr/share/gdal \
     PROJ_LIB=/usr/share/proj \
-    PATH="/app/venv/bin:$PATH"
+    PATH="/app/venv/bin:$PATH" \
+    DOCKER=true
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
