@@ -765,6 +765,12 @@ class FileService {
         console.log('  - Error Output Length:', errorOutput.length);
         console.log('  - Raw Output Preview:', output.substring(0, 500));
         
+        // Debug: Show stderr output for debugging
+        if (errorOutput.length > 0) {
+          console.log('🐍 Python stderr Output:');
+          console.log(errorOutput);
+        }
+        
         if (code === 0) {
           try {
             // Parse JSON output from Python
@@ -774,6 +780,14 @@ class FileService {
             console.log('  - Has raster_info:', !!result.raster_info);
             console.log('  - Has error:', !!result.error);
             console.log('  - Keys:', Object.keys(result));
+            
+            // Debug: Show error details if present
+            if (result.error) {
+              console.log('❌ Python Script Error Details:');
+              console.log('  - Error:', result.error);
+              console.log('  - File Path:', result.file_path);
+              console.log('  - Timestamp:', result.extraction_timestamp);
+            }
             
             resolve({
               success: true,
@@ -835,6 +849,11 @@ class FileService {
       // Validate required data structure
       if (!extractedData) {
         throw new Error('Extracted data is null or undefined');
+      }
+      
+      // Check if this is an error response from Python script
+      if (extractedData.error) {
+        throw new Error(`Python extraction failed: ${extractedData.error}`);
       }
       
       if (!extractedData.spatial_info) {
