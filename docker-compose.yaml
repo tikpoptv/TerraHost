@@ -44,7 +44,6 @@ services:
       - GDAL_DATA=/usr/share/gdal
       - PROJ_LIB=/usr/share/proj
     volumes:
-      - ./backend/scripts:/app/scripts:ro
       - terrahost-temp:/app/temp
     networks:
       - terrahost-network
