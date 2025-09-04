@@ -1,20 +1,19 @@
 # Multi-stage build for Node.js + Python
-FROM node:20-alpine AS base
+FROM node:20-bullseye-slim AS base
 
 # Install system dependencies for Python and GDAL
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     python3 \
-    py3-pip \
-    gdal \
-    gdal-dev \
-    geos \
-    geos-dev \
-    proj \
-    proj-dev \
-    sqlite \
-    sqlite-dev \
-    build-base \
-    libc6-compat
+    python3-pip \
+    python3-venv \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    libsqlite3-dev \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -26,7 +25,7 @@ RUN npm ci --only=production && npm cache clean --force
 
 # Install Python dependencies
 COPY requirements.txt ./
-RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Production image
 FROM base AS runner
