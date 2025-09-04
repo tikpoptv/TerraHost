@@ -1,48 +1,62 @@
-FROM node:18-bookworm-slim AS base
-ENV DEBIAN_FRONTEND=noninteractive
+# Multi-stage build for Node.js + Python geospatial processing
+FROM python:3.11-slim-bookworm AS python-base
 
-# ติดตั้งระบบพื้นฐาน + เครื่องมือ build + GDAL (แก้ไข SSL certificate)
-RUN set -eux; \
-    echo "deb http://deb.debian.org/debian bookworm main" > /etc/apt/sources.list; \
-    echo "deb http://deb.debian.org/debian bookworm-updates main" >> /etc/apt/sources.list; \
-    echo "deb http://security.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list; \
-    apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30; \
-    apt-get install -y --no-install-recommends ca-certificates; \
-    echo "deb https://ftp.debian.org/debian/ bookworm contrib main non-free non-free-firmware" > /etc/apt/sources.list; \
-    echo "deb https://ftp.debian.org/debian/ bookworm-updates contrib main non-free non-free-firmware" >> /etc/apt/sources.list; \
-    echo "deb https://security.debian.org/debian-security/ bookworm-security contrib main non-free non-free-firmware" >> /etc/apt/sources.list; \
-    apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30; \
-    apt-get install -y --no-install-recommends \
-        curl wget gnupg \
-        python3 python3-pip python3-venv python3-dev \
-        build-essential pkg-config \
-        gdal-bin libgdal-dev libproj-dev libgeos-dev libsqlite3-dev; \
-    rm -rf /var/lib/apt/lists/*
+# Install system dependencies for geospatial processing
+RUN apt-get update && apt-get install -y \
+    gdal-bin \
+    libgdal-dev \
+    libproj-dev \
+    libgeos-dev \
+    libsqlite3-dev \
+    build-essential \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Node.js
+RUN apt-get update && apt-get install -y curl \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
 WORKDIR /app
 
-# Node deps
+# Copy package files
 COPY package.json package-lock.json* ./
-# --only=production เลิกใช้แล้ว เปลี่ยนเป็น --omit=dev
+
+# Install Node.js dependencies
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Python deps
-COPY requirements.txt ./
-RUN python3 -m venv /opt/venv \
- && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
- && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
-
-# Copy source
+# Copy application code
 COPY . .
 
-# Set Python virtual environment path
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Non-root user
+# Create non-root user
 RUN addgroup --system --gid 1001 nodejs \
- && adduser --system --uid 1001 nodejs
+    && adduser --system --uid 1001 nodejs
+
+# Set ownership
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
 USER nodejs
 
+# Expose port
 EXPOSE 8000
-ENV PORT=8000 HOST=0.0.0.0
+
+# Set environment variables
+ENV PORT=8000 \
+    HOST=0.0.0.0 \
+    PYTHONPATH=/app/scripts \
+    GDAL_DATA=/usr/share/gdal \
+    PROJ_LIB=/usr/share/proj
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# Start the application
 CMD ["node", "src/server.js"]
