@@ -175,7 +175,7 @@ class FileService {
   // Get user's files
   async getUserFiles(userId, options = {}) {
     try {
-      const { page = 1, limit = 20, status, search } = options;
+      const { page = 1, limit = 20, status, search, session_status } = options;
       const offset = (page - 1) * limit;
 
       let query = `
@@ -201,6 +201,26 @@ class FileService {
         query += ` AND (gf.filename ILIKE $${paramIndex} OR gf.original_filename ILIKE $${paramIndex})`;
         queryParams.push(`%${search}%`);
         paramIndex++;
+      }
+
+      if (session_status) {
+        if (session_status === 'not_started') {
+          // Files that have no processing sessions
+          query += ` AND gf.id NOT IN (
+            SELECT DISTINCT ps.file_id 
+            FROM processing_sessions ps 
+            WHERE ps.file_id IS NOT NULL
+          )`;
+        } else {
+          // Files that have sessions with specific status
+          query += ` AND gf.id IN (
+            SELECT DISTINCT ps.file_id 
+            FROM processing_sessions ps 
+            WHERE ps.status = $${paramIndex}
+          )`;
+          queryParams.push(session_status);
+          paramIndex++;
+        }
       }
 
       query += ` ORDER BY gf.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -257,6 +277,26 @@ class FileService {
         countQuery += ` AND (gf.filename ILIKE $${countParamIndex} OR gf.original_filename ILIKE $${countParamIndex})`;
         countParams.push(`%${search}%`);
         countParamIndex++;
+      }
+
+      if (session_status) {
+        if (session_status === 'not_started') {
+          // Files that have no processing sessions
+          countQuery += ` AND gf.id NOT IN (
+            SELECT DISTINCT ps.file_id 
+            FROM processing_sessions ps 
+            WHERE ps.file_id IS NOT NULL
+          )`;
+        } else {
+          // Files that have sessions with specific status
+          countQuery += ` AND gf.id IN (
+            SELECT DISTINCT ps.file_id 
+            FROM processing_sessions ps 
+            WHERE ps.status = $${countParamIndex}
+          )`;
+          countParams.push(session_status);
+          countParamIndex++;
+        }
       }
 
       const countResult = await this.db.executeQuery(countQuery, countParams);

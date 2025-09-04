@@ -124,13 +124,14 @@ class FileController extends BaseController {
   async getUserFiles(req, res) {
     try {
       const userId = req.user.id;
-      const { page = 1, limit = 20, status, search } = req.query;
+      const { page = 1, limit = 20, status, search, session_status } = req.query;
 
       const result = await this.fileService.getUserFiles(userId, {
         page: parseInt(page),
         limit: parseInt(limit),
         status,
-        search
+        search,
+        session_status
       });
 
       res.status(200).json({

@@ -5,6 +5,7 @@ import "./globals.css";
 import HealthCheckProvider from "@/components/HealthCheckProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import ConfigErrorBoundary from "@/components/ConfigErrorBoundary";
+import { Toaster } from "react-hot-toast";
 import "@/utils/debugEnv";
 
 const geistSans = Geist({
@@ -39,6 +40,30 @@ export default function RootLayout({
             </HealthCheckProvider>
           </AuthProvider>
         </ConfigErrorBoundary>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 5000,
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </body>
     </html>
   );

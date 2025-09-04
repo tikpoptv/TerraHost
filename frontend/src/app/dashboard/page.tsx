@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuthCheck } from '@/hooks/useAuthCheck';
 import FileUploadModal from '@/components/FileUploadModal';
 import ProcessingModal from '@/components/ProcessingModal';
 import TokenManagementModal from '@/components/TokenManagementModal';
-import fileService, { GeoTIFFFile, FileListResponse } from '@/services/fileService';
+import fileService, { GeoTIFFFile } from '@/services/fileService';
+import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -22,15 +23,22 @@ export default function DashboardPage() {
   const [fileStats, setFileStats] = useState({
     totalFiles: 0,
     totalSize: 0,
-    completedFiles: 0,
     processingFiles: 0,
     processedFiles: 0
   });
   const [isLoadingFiles, setIsLoadingFiles] = useState(true);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const filesPerPage = 10;
+
+  // Filter state
+  const [sessionFilter, setSessionFilter] = useState<string>('');
 
   // Processing state
   const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
-  const [processedFiles, setProcessedFiles] = useState<Set<string>>(new Set());
 
   const handleLogout = async () => {
     if (isLoggingOut) return; // Prevent double-click
@@ -39,50 +47,126 @@ export default function DashboardPage() {
     
     try {
       await logout();
+      toast.success('Logged out successfully!');
       // AuthProvider will handle redirect when auth state changes
     } catch (error) {
       console.error('Logout failed:', error);
+      toast.error('Failed to logout');
       // AuthProvider will still handle redirect after logout method clears local storage
     }
   };
 
   const handleCheckAuth = async () => {
-    await checkAuth();
+    try {
+      await checkAuth();
+      toast.success('Auth status checked successfully!');
+    } catch {
+      toast.error('Failed to check auth status');
+    }
   };
 
-  // Load user files
-  const loadUserFiles = async () => {
+  // Load user files with pagination
+  const loadUserFiles = useCallback(async (page: number = currentPage) => {
     try {
       setIsLoadingFiles(true);
-      const response = await fileService.getUserFiles({ page: 1, limit: 50 });
+      
+      // Add minimum loading time for smooth UX
+      const [response] = await Promise.all([
+        fileService.getUserFiles({ 
+          page, 
+          limit: filesPerPage,
+          session_status: sessionFilter || undefined
+        }),
+        new Promise(resolve => setTimeout(resolve, 1500)) // 1.5 seconds minimum loading
+      ]);
       
       if (response.success && response.data) {
-        setFiles(response.data.files);
+        setFiles(response.data.files || []);
         
-        // Calculate stats
-        const totalSize = response.data.files.reduce((sum, file) => sum + file.file_size, 0);
-        const completedFiles = response.data.files.filter(file => file.upload_status === 'completed').length;
-        const processingFiles = response.data.files.filter(file => file.upload_status === 'processing').length;
-        const processedFiles = response.data.files.filter(file => file.upload_status === 'processed').length;
+        // Update pagination info from API response
+        const pagination = response.data.pagination;
+        const totalFilesCount = pagination?.total || 0;
+        const totalPagesCount = pagination?.totalPages || 1;
         
+        setTotalFiles(totalFilesCount);
+        setTotalPages(totalPagesCount);
+        setCurrentPage(page);
+        
+        // Calculate stats from current page files only (commented out - API not ready)
+        // const currentFiles = response.data.files || [];
+        // const totalSize = currentFiles.reduce((sum, file) => sum + (file.file_size || 0), 0);
+        // const processingFiles = currentFiles.filter(file => file.upload_status === 'processing').length;
+        // const processedFiles = currentFiles.filter(file => file.upload_status === 'completed').length;
+        
+        // setFileStats({
+        //   totalFiles: totalFilesCount,
+        //   totalSize,
+        //   processingFiles,
+        //   processedFiles
+        // });
+        
+        console.log('📊 Dashboard stats loaded:', { 
+          totalFiles: totalFilesCount, 
+          // totalSize, 
+          // processingFiles, 
+          // processedFiles,
+          pagination: pagination
+        });
+        
+        // Show success toast for loading files
+        if (totalFilesCount > 0) {
+          toast.success(`Loaded ${totalFilesCount} files successfully!`);
+        }
+        
+        // Override stats with 0 values (API not ready yet)
         setFileStats({
-          totalFiles: response.data.files.length,
-          totalSize,
-          completedFiles,
-          processingFiles,
-          processedFiles
+          totalFiles: 0,
+          totalSize: 0,
+          processingFiles: 0,
+          processedFiles: 0
+        });
+      } else {
+        // Set empty stats if no data
+        setFiles([]);
+        setTotalFiles(0);
+        setTotalPages(1);
+        setFileStats({
+          totalFiles: 0,
+          totalSize: 0,
+          processingFiles: 0,
+          processedFiles: 0
         });
       }
     } catch (error) {
       console.error('Failed to load files:', error);
+      toast.error('Failed to load files');
+      // Set empty stats on error
+      setFiles([]);
+      setTotalFiles(0);
+      setTotalPages(1);
+      setFileStats({
+        totalFiles: 0,
+        totalSize: 0,
+        processingFiles: 0,
+        processedFiles: 0
+      });
     } finally {
       setIsLoadingFiles(false);
     }
-  };
+  }, [currentPage, filesPerPage, sessionFilter]);
 
   // Handle upload success
   const handleUploadSuccess = () => {
-    loadUserFiles(); // Reload files after successful upload
+    toast.success('File uploaded successfully!');
+    loadUserFiles(1); // Reload files from page 1 after successful upload
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      toast.success(`Switched to page ${page}`);
+      loadUserFiles(page);
+    }
   };
 
   // Delete file
@@ -91,13 +175,14 @@ export default function DashboardPage() {
       try {
         const response = await fileService.deleteFile(fileId);
         if (response.success) {
+          toast.success(`File deleted successfully`);
           loadUserFiles(); // Reload files after deletion
         } else {
-          alert('ลบไฟล์ล้มเหลว: ' + response.error);
+          toast.error(`Failed to delete file: ${response.error}`);
         }
       } catch (error) {
         console.error('Delete file error:', error);
-        alert('เกิดข้อผิดพลาดในการลบไฟล์');
+        toast.error('Error deleting file');
       }
     }
   };
@@ -108,13 +193,16 @@ export default function DashboardPage() {
       // Add to processing set
       setProcessingFiles(prev => new Set(prev).add(fileId));
       
-      const result = await fileService.processGeoTIFF(fileId);
+      await fileService.processGeoTIFF(fileId);
+      
+      // Show success toast for starting processing
+      toast.success(`Processing started for ${fileId.substring(0, 8)}...`);
       
       // Start polling for status
       pollProcessingStatus(fileId);
     } catch (error) {
       console.error('Process file error:', error);
-      alert('เกิดข้อผิดพลาดในการประมวลผล');
+      toast.error(`Failed to start processing for ${fileId.substring(0, 8)}...`);
       setProcessingFiles(prev => {
         const newSet = new Set(prev);
         newSet.delete(fileId);
@@ -136,8 +224,9 @@ export default function DashboardPage() {
             newSet.delete(fileId);
             return newSet;
           });
-          setProcessedFiles(prev => new Set(prev).add(fileId));
+          // File processing completed
           clearInterval(pollInterval);
+          toast.success(`Processing completed for ${fileId.substring(0, 8)}...`);
           loadUserFiles(); // Reload to get updated status
         } else if (status.processingStatus === 'not_started') {
           // Processing failed
@@ -147,7 +236,7 @@ export default function DashboardPage() {
             return newSet;
           });
           clearInterval(pollInterval);
-          alert('การประมวลผลล้มเหลว');
+          toast.error(`Processing failed for ${fileId.substring(0, 8)}...`);
         }
         // Continue polling if still in progress
       } catch (error) {
@@ -158,6 +247,7 @@ export default function DashboardPage() {
           newSet.delete(fileId);
           return newSet;
         });
+        toast.error(`Error checking status for ${fileId.substring(0, 8)}...`);
       }
     }, 2000); // Poll every 2 seconds
 
@@ -169,6 +259,7 @@ export default function DashboardPage() {
         newSet.delete(fileId);
         return newSet;
       });
+      toast.error(`Processing timeout for ${fileId.substring(0, 8)}...`);
     }, 5 * 60 * 1000);
   };
 
@@ -177,17 +268,18 @@ export default function DashboardPage() {
     try {
       const metadata = await fileService.getFileMetadata(fileId);
       // For now, just show alert. You can create a modal later
+      toast.success(`File metadata loaded successfully!`);
       alert(`ข้อมูลไฟล์:\nขนาด: ${metadata.spatialMetadata.dimensions.width}x${metadata.spatialMetadata.dimensions.height}\nจำนวน Bands: ${metadata.spatialMetadata.dimensions.bandsCount}`);
     } catch (error) {
       console.error('Error getting metadata:', error);
-      alert('ไม่สามารถดึงข้อมูลได้');
+      toast.error('Failed to load file metadata');
     }
   };
 
   // Load files on component mount
   useEffect(() => {
     loadUserFiles();
-  }, []);
+  }, [loadUserFiles]);
 
   return (
     <ProtectedRoute requireAuth={true}>
@@ -290,8 +382,11 @@ export default function DashboardPage() {
               </div>
 
               {/* GeoTIFF Statistics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div 
+                  onClick={() => toast.success('GeoTIFF Files: ' + (isLoadingFiles ? '...' : fileStats.totalFiles))}
+                  className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
+                >
                   <div className="flex items-center">
                     <div className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
                       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,29 +394,22 @@ export default function DashboardPage() {
                       </svg>
                     </div>
                     <div className="ml-4">
-                      <h3 className="text-lg font-semibold text-gray-900">ไฟล์ GeoTIFF</h3>
-                      <p className="text-3xl font-bold text-blue-600">{fileStats.totalFiles}</p>
-                      <p className="text-sm text-gray-500">ไฟล์ที่อัพโหลด</p>
+                      <h3 className="text-lg font-semibold text-gray-900">GeoTIFF Files</h3>
+                      <p className="text-3xl font-bold text-blue-600">
+                        {isLoadingFiles ? '...' : fileStats.totalFiles}
+                      </p>
+                      <p className="text-sm text-gray-500">Uploaded Files</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                  <div className="flex items-center">
-                    <div className="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Layer ที่แยก</h3>
-                      <p className="text-3xl font-bold text-green-600">{fileStats.completedFiles}</p>
-                      <p className="text-sm text-gray-500">ไฟล์ที่ประมวลผลเสร็จ</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div 
+                  onClick={() => {
+                    toast.success('Processing Jobs: ' + (isLoadingFiles ? '...' : fileStats.processingFiles));
+                    setIsProcessingModalOpen(true);
+                  }}
+                  className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
+                >
                   <div className="flex items-center">
                     <div className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl">
                       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,14 +417,19 @@ export default function DashboardPage() {
                       </svg>
                     </div>
                     <div className="ml-4">
-                      <h3 className="text-lg font-semibold text-gray-900">งานประมวลผล</h3>
-                      <p className="text-3xl font-bold text-purple-600">{fileStats.processingFiles}</p>
-                      <p className="text-sm text-gray-500">งานที่กำลังดำเนินการ</p>
+                      <h3 className="text-lg font-semibold text-gray-900">Processing Jobs</h3>
+                      <p className="text-3xl font-bold text-purple-600">
+                        {isLoadingFiles ? '...' : fileStats.processingFiles}
+                      </p>
+                      <p className="text-sm text-gray-500">Active Jobs</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div 
+                  onClick={() => toast.success('Storage Used: ' + (isLoadingFiles ? '...' : fileService.formatFileSize(fileStats.totalSize)))}
+                  className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
+                >
                   <div className="flex items-center">
                     <div className="p-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl">
                       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,14 +437,19 @@ export default function DashboardPage() {
                       </svg>
                     </div>
                     <div className="ml-4">
-                      <h3 className="text-lg font-semibold text-gray-900">พื้นที่จัดเก็บ</h3>
-                      <p className="text-3xl font-bold text-orange-600">{fileService.formatFileSize(fileStats.totalSize)}</p>
-                      <p className="text-sm text-gray-500">พื้นที่ที่ใช้</p>
+                      <h3 className="text-lg font-semibold text-gray-900">Storage Used</h3>
+                      <p className="text-3xl font-bold text-orange-600">
+                        {isLoadingFiles ? '...' : fileService.formatFileSize(fileStats.totalSize)}
+                      </p>
+                      <p className="text-sm text-gray-500">Total Space</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div 
+                  onClick={() => toast.success('Completed: ' + (isLoadingFiles ? '...' : fileStats.processedFiles))}
+                  className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-45 flex flex-col justify-center cursor-pointer"
+                >
                   <div className="flex items-center">
                     <div className="p-3 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl">
                       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,9 +457,11 @@ export default function DashboardPage() {
                       </svg>
                     </div>
                     <div className="ml-4">
-                      <h3 className="text-lg font-semibold text-gray-900">ประมวลผลเสร็จ</h3>
-                      <p className="text-3xl font-bold text-indigo-600">{fileStats.processedFiles}</p>
-                      <p className="text-sm text-gray-500">ไฟล์ที่แกะข้อมูลแล้ว</p>
+                      <h3 className="text-lg font-semibold text-gray-900">Completed</h3>
+                      <p className="text-3xl font-bold text-indigo-600">
+                        {isLoadingFiles ? '...' : fileStats.processedFiles}
+                      </p>
+                      <p className="text-sm text-gray-500">Data Extracted</p>
                     </div>
                   </div>
                 </div>
@@ -372,7 +472,10 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">🚀 การดำเนินการด่วน</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <button 
-                    onClick={() => setIsUploadModalOpen(true)}
+                    onClick={() => {
+                      setIsUploadModalOpen(true);
+                      toast.success('Upload modal opened');
+                    }}
                     className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     <div className="flex items-center justify-center space-x-2">
@@ -383,7 +486,10 @@ export default function DashboardPage() {
                     </div>
                   </button>
                   <button 
-                    onClick={() => setIsProcessingModalOpen(true)}
+                    onClick={() => {
+                      setIsProcessingModalOpen(true);
+                      toast.success('Processing modal opened');
+                    }}
                     className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     <div className="flex items-center justify-center space-x-2">
@@ -395,7 +501,10 @@ export default function DashboardPage() {
                     </div>
                   </button>
                   <button 
-                    onClick={() => setIsTokenManagementModalOpen(true)}
+                    onClick={() => {
+                      setIsTokenManagementModalOpen(true);
+                      toast.success('Token management modal opened');
+                    }}
                     className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     <div className="flex items-center justify-center space-x-2">
@@ -405,7 +514,10 @@ export default function DashboardPage() {
                       <span>จัดการ API Keys</span>
                     </div>
                   </button>
-                  <button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg">
+                  <button 
+                    onClick={() => toast.success('Reports feature coming soon!')}
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  >
                     <div className="flex items-center justify-center space-x-2">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -421,7 +533,10 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-semibold text-gray-900">📁 ไฟล์ GeoTIFF ในระบบ</h3>
                   <button 
-                    onClick={() => setIsUploadModalOpen(true)}
+                    onClick={() => {
+                      setIsUploadModalOpen(true);
+                      toast.success('Upload modal opened');
+                    }}
                     className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 shadow-lg text-sm"
                   >
                     <div className="flex items-center space-x-2">
@@ -433,12 +548,71 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 
+                {/* Filter Controls */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-end space-x-4">
+                    <label className="text-sm font-medium text-gray-700">Filter by Session:</label>
+                    <select
+                      value={sessionFilter}
+                      onChange={(e) => {
+                        setSessionFilter(e.target.value);
+                        setCurrentPage(1); // Reset to page 1 when filter changes
+                        if (e.target.value) {
+                          toast.success(`Filter applied: ${e.target.value}`);
+                        } else {
+                          toast.success('Filter cleared');
+                        }
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">All Files</option>
+                      <option value="completed">Completed Sessions</option>
+                      <option value="processing">Processing Sessions</option>
+                      <option value="failed">Failed Sessions</option>
+                      <option value="not_started">Uploaded (No Processing)</option>
+                    </select>
+                    {sessionFilter && (
+                      <button
+                        onClick={() => {
+                          setSessionFilter('');
+                          setCurrentPage(1);
+                          toast.success('Filter cleared');
+                        }}
+                        className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                      >
+                        Clear Filter
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
                 {/* Real TIFF Files from Backend */}
-                <div className="space-y-4">
+                <div className="space-y-4 min-h-[200px] transition-all duration-300 ease-in-out">
                   {isLoadingFiles ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p className="text-gray-500">กำลังโหลดไฟล์...</p>
+                    <div className="space-y-4">
+                      {/* Skeleton Loading */}
+                      {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="animate-pulse">
+                          <div className="flex items-center justify-between p-4 bg-gray-100 rounded-lg border border-gray-200">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                              <div className="space-y-2">
+                                <div className="h-4 bg-gray-200 rounded w-48"></div>
+                                <div className="h-3 bg-gray-200 rounded w-32"></div>
+                                <div className="h-3 bg-gray-200 rounded w-24"></div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                              <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                              <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                      </div>
                     </div>
                   ) : files.length === 0 ? (
                     <div className="text-center py-8">
@@ -450,7 +624,10 @@ export default function DashboardPage() {
                       <h4 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีไฟล์ GeoTIFF</h4>
                       <p className="text-gray-500 mb-4">เริ่มต้นโดยการอัพโหลดไฟล์ GeoTIFF ไฟล์แรกของคุณ</p>
                       <button
-                        onClick={() => setIsUploadModalOpen(true)}
+                        onClick={() => {
+                          setIsUploadModalOpen(true);
+                          toast.success('Upload modal opened');
+                        }}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                       >
                         อัพโหลดไฟล์แรก
@@ -460,7 +637,7 @@ export default function DashboardPage() {
                     files.map((file) => {
                       const statusInfo = fileService.formatUploadStatus(file.upload_status);
                       return (
-                        <div key={file.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                        <div key={file.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-all duration-300 ease-in-out transform hover:scale-[1.02]">
                           <div className="flex items-center space-x-4">
                             <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -489,7 +666,7 @@ export default function DashboardPage() {
                                       ไฟล์นี้ผ่านการประมวลผลแล้ว {file.processing_sessions.length} ครั้ง
                                     </div>
                                     <div className="space-y-1">
-                                      {file.processing_sessions.map((session, index) => (
+                                      {file.processing_sessions.map((session) => (
                                         <div key={session.session_id} className="inline-flex items-center">
                                           <span className="font-bold text-gray-800 mr-2 bg-gray-100 px-2 py-0.5 rounded-md">
                                             {session.session_id.slice(0, 8)}
@@ -584,6 +761,78 @@ export default function DashboardPage() {
                     })
                   )}
                 </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 px-4 py-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-in-out">
+                    <div className="flex items-center text-sm text-gray-700">
+                      <span>
+                        แสดง {((currentPage - 1) * filesPerPage) + 1} - {Math.min(currentPage * filesPerPage, totalFiles)} 
+                        จาก {totalFiles} ไฟล์
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {/* Previous Button */}
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                          currentPage === 1
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      
+                      {/* Page Numbers */}
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      
+                      {/* Next Button */}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                          currentPage === totalPages
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -593,22 +842,30 @@ export default function DashboardPage() {
       {/* File Upload Modal */}
       <FileUploadModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
+        onClose={() => {
+          setIsUploadModalOpen(false);
+          toast.success('Upload modal closed');
+        }}
         onUploadSuccess={handleUploadSuccess}
       />
 
       {/* Processing Modal */}
       <ProcessingModal
         isOpen={isProcessingModalOpen}
-        onClose={() => setIsProcessingModalOpen(false)}
-        files={files}
+        onClose={() => {
+          setIsProcessingModalOpen(false);
+          toast.success('Processing modal closed');
+        }}
         onProcessingComplete={loadUserFiles}
       />
 
       {/* Token Management Modal */}
       <TokenManagementModal
         isOpen={isTokenManagementModalOpen}
-        onClose={() => setIsTokenManagementModalOpen(false)}
+        onClose={() => {
+          setIsTokenManagementModalOpen(false);
+          toast.success('Token management modal closed');
+        }}
       />
     </ProtectedRoute>
   );

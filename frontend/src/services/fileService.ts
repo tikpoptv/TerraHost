@@ -93,6 +93,7 @@ class FileService {
     limit?: number;
     status?: string;
     search?: string;
+    session_status?: string;
   } = {}): Promise<{ success: boolean; data?: FileListResponse; error?: string }> {
     try {
       const params = new URLSearchParams();
@@ -100,6 +101,7 @@ class FileService {
       if (options.limit) params.append('limit', options.limit.toString());
       if (options.status) params.append('status', options.status);
       if (options.search) params.append('search', options.search);
+      if (options.session_status) params.append('session_status', options.session_status);
 
       const response = await api.get<FileListResponse>(`/files/files?${params.toString()}`);
       return response;
@@ -189,8 +191,8 @@ class FileService {
   }
 
   // Format file size
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
+  formatFileSize(bytes: number | undefined): string {
+    if (!bytes || bytes === 0) return '0 Bytes';
     
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
