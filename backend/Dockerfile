@@ -1,29 +1,23 @@
-FROM node:18-bullseye-slim AS base
+FROM node:18-bookworm-slim AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ติดตั้ง system dependencies แบบขั้นบันได
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget gnupg \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-venv python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gdal-bin libgdal-dev \
-    libproj-dev libgeos-dev libsqlite3-dev \
-    && rm -rf /var/lib/apt/lists/*
+# ติดตั้งระบบพื้นฐาน + เครื่องมือ build + GDAL (รวมเป็นคำสั่งเดียว)
+RUN set -eux; \
+    apt-get update -o Acquire::Retries=5; \
+    apt-get install -y --no-install-recommends \
+      ca-certificates curl wget gnupg \
+      python3 python3-pip python3-venv python3-dev \
+      build-essential pkg-config \
+      gdal-bin libgdal-dev libproj-dev libgeos-dev libsqlite3-dev \
+    ; \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Node deps
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+# --only=production เลิกใช้แล้ว เปลี่ยนเป็น --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Python deps
 COPY requirements.txt ./
