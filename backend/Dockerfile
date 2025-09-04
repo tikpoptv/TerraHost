@@ -1,6 +1,11 @@
 # Multi-stage build for Node.js + Python geospatial processing
 FROM python:3.11-slim-bookworm AS python-base
 
+# Fix repository sources to use HTTPS
+RUN echo "deb https://ftp.debian.org/debian/ bookworm main" > /etc/apt/sources.list && \
+    echo "deb https://ftp.debian.org/debian/ bookworm-updates main" >> /etc/apt/sources.list && \
+    echo "deb https://security.debian.org/debian-security/ bookworm-security main" >> /etc/apt/sources.list
+
 # Install system dependencies for geospatial processing
 RUN apt-get update && apt-get install -y \
     gdal-bin \
