@@ -41,14 +41,14 @@ COPY package.json package-lock.json* ./
 # Install Node.js dependencies
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy application code
-COPY . .
-
-# Create scripts directory and copy script
+# Create scripts directory first
 RUN mkdir -p /app/scripts
 
 # Copy the specific script file with absolute path from build context
 COPY scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
+
+# Copy application code (excluding scripts directory to avoid duplication)
+COPY src/ ./src/
 
 # Alternative: Create a simple test script to verify the directory works
 RUN echo '#!/usr/bin/env python3' > /app/scripts/test_script.py \
@@ -79,10 +79,12 @@ RUN echo "=== Checking scripts directory ===" \
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nodejs
 
-# Create temp directory and set permissions
+# Create temp directory and set permissions (optimized)
 RUN mkdir -p /app/temp \
-    && chown -R nodejs:nodejs /app \
-    && chmod -R 755 /app/temp
+    && chown -R nodejs:nodejs /app/temp \
+    && chmod -R 755 /app/temp \
+    && chown -R nodejs:nodejs /app/scripts \
+    && chmod -R 755 /app/scripts
 
 # Switch to non-root user
 USER nodejs
