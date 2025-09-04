@@ -589,7 +589,7 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Real TIFF Files from Backend */}
-                <div className="space-y-4 min-h-[200px] transition-all duration-300 ease-in-out">
+                <div className="space-y-4 min-h-[200px] max-h-[70vh] overflow-y-auto transition-all duration-300 ease-in-out pt-6 pb-12">
                   {isLoadingFiles ? (
                     <div className="space-y-4">
                       {/* Skeleton Loading */}
@@ -619,43 +619,68 @@ export default function DashboardPage() {
                   ) : files.length === 0 ? (
                     <div className="text-center py-8">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+                        {sessionFilter ? (
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        )}
                       </div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">No GeoTIFF Files Yet</h4>
-                      <p className="text-gray-500 mb-4">Get started by uploading your first GeoTIFF file</p>
-                      <button
-                        onClick={() => {
-                          setIsUploadModalOpen(true);
-                          toast.success('Upload modal opened');
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                      >
-                        Upload First File
-                      </button>
+                      {sessionFilter ? (
+                        <>
+                          <h4 className="text-lg font-medium text-gray-900 mb-2">No Results Found</h4>
+                          <p className="text-gray-500 mb-4">No files match your search criteria</p>
+                          <button
+                            onClick={() => {
+                              setSessionFilter('');
+                              setCurrentPage(1);
+                              toast.success('Filter cleared');
+                            }}
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          >
+                            Clear Filter
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <h4 className="text-lg font-medium text-gray-900 mb-2">No GeoTIFF Files Yet</h4>
+                          <p className="text-gray-500 mb-4">Get started by uploading your first GeoTIFF file</p>
+                          <button
+                            onClick={() => {
+                              setIsUploadModalOpen(true);
+                              toast.success('Upload modal opened');
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          >
+                            Upload First File
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : (
                     files.map((file) => {
                       const statusInfo = fileService.formatUploadStatus(file.upload_status);
                       return (
-                        <div key={file.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-all duration-300 ease-in-out transform hover:scale-[1.02]">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div key={file.id} className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:z-10">
+                          <div className="flex items-start sm:items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                               </svg>
                             </div>
-                            <div>
-                              <h4 className="font-medium text-gray-900">{file.original_filename}</h4>
-                                                              <p className="text-sm text-gray-500">
-                                  Size: {fileService.formatFileSize(file.file_size)} • Uploaded: {fileService.formatDateTime(file.created_at)}
-                                </p>
-                              <div className="flex items-center space-x-2 mt-1">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-gray-900 truncate">{file.original_filename}</h4>
+                              <p className="text-sm text-gray-500 break-words">
+                                Size: {fileService.formatFileSize(file.file_size)} • Uploaded: {fileService.formatDateTime(file.created_at)}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <span className={`px-2 py-1 text-xs rounded-full ${statusInfo.bgColor} ${statusInfo.color}`}>
                                   {statusInfo.text}
                                 </span>
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full truncate max-w-[120px]">
                                   {file.filename}
                                 </span>
                               </div>
@@ -663,17 +688,17 @@ export default function DashboardPage() {
                               {/* Processing Sessions Info */}
                               {file.processing_sessions && file.processing_sessions.length > 0 && (
                                 <div className="mt-2">
-                                  <div className="inline-flex flex-col px-3 py-2 bg-gray-50 text-gray-700 rounded-lg border border-gray-200 text-xs">
+                                  <div className="inline-flex flex-col w-full px-3 py-2 bg-gray-50 text-gray-700 rounded-lg border border-gray-200 text-xs">
                                     <div className="text-gray-600 mb-2 font-medium">
                                       This file has been processed {file.processing_sessions.length} times
                                     </div>
                                     <div className="space-y-1">
                                       {file.processing_sessions.map((session) => (
-                                        <div key={session.session_id} className="inline-flex items-center">
-                                          <span className="font-bold text-gray-800 mr-2 bg-gray-100 px-2 py-0.5 rounded-md">
+                                        <div key={session.session_id} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                          <span className="font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-md text-xs">
                                             {session.session_id.slice(0, 8)}
                                           </span>
-                                          <span className="text-gray-500 mr-2">:</span>
+                                          <span className="text-gray-500 hidden sm:inline">:</span>
                                           <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
                                             session.processing_status === 'completed' ? 'bg-green-100 text-green-700' :
                                             session.processing_status === 'processing' ? 'bg-blue-100 text-blue-700' :
@@ -694,7 +719,7 @@ export default function DashboardPage() {
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-end sm:justify-start space-x-2 mt-3 sm:mt-0">
                             {/* View Metadata Button */}
                             {fileService.isProcessingCompleted(file.upload_status) && (
                               <button 
@@ -735,7 +760,8 @@ export default function DashboardPage() {
                             {fileService.isProcessingInProgress(file.upload_status) && (
                               <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
-                                <span>Processing...</span>
+                                <span className="hidden sm:inline">Processing...</span>
+                                <span className="sm:hidden">...</span>
                               </div>
                             )}
 
@@ -745,7 +771,8 @@ export default function DashboardPage() {
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
-                                <span>Processing completed</span>
+                                <span className="hidden sm:inline">Processing completed</span>
+                                <span className="sm:hidden">Done</span>
                               </div>
                             )}
                             <button 
@@ -766,20 +793,25 @@ export default function DashboardPage() {
                 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 px-4 py-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-in-out">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 px-4 py-3 bg-white border border-gray-200 rounded-lg transition-all duration-300 ease-in-out gap-4 sm:gap-0">
                     <div className="flex items-center text-sm text-gray-700">
-                      <span>
-                        Showing {((currentPage - 1) * filesPerPage) + 1} - {Math.min(currentPage * filesPerPage, totalFiles)} 
-                        of {totalFiles} files
+                      <span className="text-center sm:text-left">
+                        <span className="hidden sm:inline">
+                          Showing {((currentPage - 1) * filesPerPage) + 1} - {Math.min(currentPage * filesPerPage, totalFiles)} 
+                          of {totalFiles} files
+                        </span>
+                        <span className="sm:hidden">
+                          {((currentPage - 1) * filesPerPage) + 1}-{Math.min(currentPage * filesPerPage, totalFiles)} of {totalFiles}
+                        </span>
                       </span>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center sm:justify-start space-x-1 sm:space-x-2">
                       {/* Previous Button */}
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        className={`px-2 sm:px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                           currentPage === 1
                             ? 'text-gray-400 cursor-not-allowed'
                             : 'text-gray-700 hover:bg-gray-100'
@@ -807,7 +839,7 @@ export default function DashboardPage() {
                           <button
                             key={pageNum}
                             onClick={() => handlePageChange(pageNum)}
-                            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                            className={`px-2 sm:px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                               currentPage === pageNum
                                 ? 'bg-blue-600 text-white'
                                 : 'text-gray-700 hover:bg-gray-100'
@@ -822,7 +854,7 @@ export default function DashboardPage() {
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        className={`px-2 sm:px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                           currentPage === totalPages
                             ? 'text-gray-400 cursor-not-allowed'
                             : 'text-gray-700 hover:bg-gray-100'
