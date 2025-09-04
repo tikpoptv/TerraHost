@@ -21,9 +21,23 @@ services:
       - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-password}
       
+      # Database Pool Configuration
+      - DB_POOL_MIN=${DB_POOL_MIN:-2}
+      - DB_POOL_MAX=${DB_POOL_MAX:-10}
+      - DB_POOL_IDLE_TIMEOUT=${DB_POOL_IDLE_TIMEOUT:-30000}
+      
       # JWT Configuration
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      
+      # File Upload Configuration
+      - UPLOAD_DIR=${UPLOAD_DIR:-./uploads}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-500MB}
+      
+      # Nextcloud Configuration
+      - NEXTCLOUD_URL=${NEXTCLOUD_URL:-http://localhost:8080}
+      - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME:-admin}
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD:-password}
       
       # Python Configuration
       - PYTHONPATH=/app/scripts
