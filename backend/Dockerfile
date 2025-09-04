@@ -1,21 +1,23 @@
-FROM debian:bookworm-slim AS base
+FROM node:18-bullseye-slim AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ติดตั้ง Node.js 20
-RUN apt-get update \
- && apt-get install -y curl gnupg \
- && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
- && apt-get install -y nodejs
-
-# ติดตั้ง system GDAL + dev headers + build tools
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-venv python3-dev \
-    gdal-bin libgdal-dev \
-    build-essential pkg-config \
-    libproj-dev libgeos-dev libsqlite3-dev \
+# ติดตั้ง system dependencies แบบขั้นบันได
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl wget gnupg \
- && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdal-bin libgdal-dev \
+    libproj-dev libgeos-dev libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
