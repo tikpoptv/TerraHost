@@ -1,57 +1,38 @@
-# Multi-stage build for Node.js + Python
-FROM python:3.11-slim-bookworm AS base
+# เสถียรสุดสำหรับ Node 20
+FROM node:20-bookworm-slim AS base
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies for Node.js and GDAL
-RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
-    gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && apt-get install -y \
-    gdal-bin \
-    libgdal-dev \
-    libgeos-dev \
-    libproj-dev \
-    libsqlite3-dev \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# (กันกรณีแหล่งเป็น http) บังคับแหล่งเป็น https เช่นกัน
+RUN set -eux; \
+  sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list; \
+  sed -i 's|http://security.debian.org|https://security.debian.org|g' /etc/apt/sources.list; \
+  rm -rf /var/lib/apt/lists/*; \
+  apt-get update -o Acquire::Retries=5; \
+  apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv \
+    gdal-bin libgdal-dev libgeos-dev libproj-dev libsqlite3-dev \
+    build-essential ca-certificates curl wget gnupg; \
+  rm -rf /var/lib/apt/lists/*
 
-# Install dependencies only when needed
+# ----- deps -----
 FROM base AS deps
 WORKDIR /app
-
-# Install Node.js dependencies
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
-
-# Install Python dependencies
 COPY requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel \
+ && pip3 install --no-cache-dir -r requirements.txt
 
-# Production image
+# ----- runner -----
 FROM base AS runner
 WORKDIR /app
-
-ENV NODE_ENV=production
-ENV PYTHONPATH=/app/scripts
-
-# Add user for security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
-
-# Copy dependencies and source code
+ENV NODE_ENV=production PYTHONPATH=/app/scripts
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser --system --uid 1001 nodejs
 COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --chown=nodejs:nodejs . .
-
-# Make Python scripts executable
-RUN chmod +x scripts/*.py
-
+RUN chmod +x scripts/*.py || true
 USER nodejs
-
 EXPOSE 8000
-
-ENV PORT=8000
-ENV HOST=0.0.0.0
-
+ENV PORT=8000 HOST=0.0.0.0
 CMD ["node", "src/server.js"]
