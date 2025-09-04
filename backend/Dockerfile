@@ -47,8 +47,8 @@ COPY . .
 # Create scripts directory and copy script
 RUN mkdir -p /app/scripts
 
-# Copy the specific script file with absolute path
-COPY scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
+# Copy the specific script file with absolute path from build context
+COPY ./backend/scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
 
 # Alternative: Create a simple test script to verify the directory works
 RUN echo '#!/usr/bin/env python3' > /app/scripts/test_script.py \
@@ -60,7 +60,9 @@ RUN echo '#!/usr/bin/env python3' > /app/scripts/test_script.py \
 RUN echo "=== Verifying script copy ===" \
     && ls -la /app/scripts/ \
     && echo "=== File content check ===" \
-    && head -5 /app/scripts/geotiff_extractor.py || echo "Cannot read file"
+    && head -5 /app/scripts/geotiff_extractor.py || echo "Cannot read file" \
+    && echo "=== Checking file size ===" \
+    && ls -lh /app/scripts/geotiff_extractor.py || echo "File not found for size check"
 
 # Ensure scripts directory exists and has correct permissions
 RUN echo "=== Checking scripts directory ===" \
