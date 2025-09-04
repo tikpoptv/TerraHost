@@ -47,8 +47,20 @@ COPY . .
 # Create scripts directory and copy script
 RUN mkdir -p /app/scripts
 
-# Copy the specific script file
+# Copy the specific script file with absolute path
 COPY scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
+
+# Alternative: Create a simple test script to verify the directory works
+RUN echo '#!/usr/bin/env python3' > /app/scripts/test_script.py \
+    && echo 'import sys' >> /app/scripts/test_script.py \
+    && echo 'print("Test script works!")' >> /app/scripts/test_script.py \
+    && echo 'print("Args:", sys.argv)' >> /app/scripts/test_script.py
+
+# Verify the copy worked
+RUN echo "=== Verifying script copy ===" \
+    && ls -la /app/scripts/ \
+    && echo "=== File content check ===" \
+    && head -5 /app/scripts/geotiff_extractor.py || echo "Cannot read file"
 
 # Ensure scripts directory exists and has correct permissions
 RUN echo "=== Checking scripts directory ===" \

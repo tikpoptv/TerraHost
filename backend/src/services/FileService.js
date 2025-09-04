@@ -703,6 +703,28 @@ class FileService {
       console.log('  - Script Exists:', require('fs').existsSync(scriptPath));
       console.log('  - Python Exists:', require('fs').existsSync(pythonPath));
       
+      // Additional debugging
+      const fs = require('fs');
+      try {
+        const scriptStats = fs.statSync(scriptPath);
+        console.log('  - Script Stats:', {
+          size: scriptStats.size,
+          isFile: scriptStats.isFile(),
+          mode: scriptStats.mode.toString(8)
+        });
+      } catch (err) {
+        console.log('  - Script Stats Error:', err.message);
+      }
+      
+      // List scripts directory
+      try {
+        const scriptsDir = path.join(__dirname, '..', '..', 'scripts');
+        const files = fs.readdirSync(scriptsDir);
+        console.log('  - Scripts Directory Contents:', files);
+      } catch (err) {
+        console.log('  - Scripts Directory Error:', err.message);
+      }
+      
       const pythonProcess = spawn(pythonPath, [scriptPath, filePath]);
       
       let output = '';
