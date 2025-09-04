@@ -45,8 +45,10 @@ COPY . .
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nodejs
 
-# Set ownership
-RUN chown -R nodejs:nodejs /app
+# Create temp directory and set permissions
+RUN mkdir -p /app/temp \
+    && chown -R nodejs:nodejs /app \
+    && chmod -R 755 /app/temp
 
 # Switch to non-root user
 USER nodejs

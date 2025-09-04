@@ -45,7 +45,7 @@ services:
       - PROJ_LIB=/usr/share/proj
     volumes:
       - ./backend/scripts:/app/scripts:ro
-      - ./backend/temp:/app/temp
+      - terrahost-temp:/app/temp
     networks:
       - terrahost-network
     restart: unless-stopped
@@ -86,3 +86,7 @@ services:
 networks:
   terrahost-network:
     driver: bridge
+
+volumes:
+  terrahost-temp:
+    driver: local
