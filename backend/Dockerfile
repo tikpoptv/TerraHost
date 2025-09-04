@@ -1,17 +1,17 @@
 FROM node:18-bookworm-slim AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ติดตั้งระบบพื้นฐาน + เครื่องมือ build + GDAL (ปรับปรุง retry mechanism)
+# ติดตั้งระบบพื้นฐาน + เครื่องมือ build + GDAL (ใช้ HTTPS เหมือน server)
 RUN set -eux; \
-    for i in 1 2 3; do \
-        apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30; \
-        apt-get install -y --no-install-recommends \
-            ca-certificates curl wget gnupg \
-            python3 python3-pip python3-venv python3-dev \
-            build-essential pkg-config \
-            gdal-bin libgdal-dev libproj-dev libgeos-dev libsqlite3-dev \
-        && break || sleep 10; \
-    done; \
+    echo "deb https://ftp.debian.org/debian/ bookworm contrib main non-free non-free-firmware" > /etc/apt/sources.list; \
+    echo "deb https://ftp.debian.org/debian/ bookworm-updates contrib main non-free non-free-firmware" >> /etc/apt/sources.list; \
+    echo "deb https://security.debian.org/debian-security/ bookworm-security contrib main non-free non-free-firmware" >> /etc/apt/sources.list; \
+    apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl wget gnupg \
+        python3 python3-pip python3-venv python3-dev \
+        build-essential pkg-config \
+        gdal-bin libgdal-dev libproj-dev libgeos-dev libsqlite3-dev; \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
