@@ -44,11 +44,7 @@ RUN adduser --system --uid 1001 nodejs
 
 # Copy dependencies and source code
 COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=deps --chown=nodejs:nodejs /opt/venv /opt/venv
 COPY --chown=nodejs:nodejs . .
-
-# Set Python virtual environment path
-ENV PATH="/opt/venv/bin:$PATH"
 
 # Make Python scripts executable
 RUN chmod +x scripts/*.py
