@@ -44,14 +44,19 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy application code
 COPY . .
 
-# Copy scripts directory separately to ensure it's included
-COPY scripts/ /app/scripts/
+# Create scripts directory and copy script
+RUN mkdir -p /app/scripts
+
+# Copy the specific script file
+COPY scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
 
 # Ensure scripts directory exists and has correct permissions
 RUN echo "=== Checking scripts directory ===" \
     && ls -la /app/scripts/ \
     && echo "=== Checking if geotiff_extractor.py exists ===" \
     && test -f /app/scripts/geotiff_extractor.py && echo "Script exists!" || echo "Script NOT found!" \
+    && echo "=== Checking file size ===" \
+    && ls -lh /app/scripts/geotiff_extractor.py || echo "File not found for size check" \
     && chmod +x /app/scripts/geotiff_extractor.py \
     && echo "=== Final check ===" \
     && ls -la /app/scripts/geotiff_extractor.py
