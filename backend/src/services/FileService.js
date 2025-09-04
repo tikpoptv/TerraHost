@@ -702,6 +702,8 @@ class FileService {
       console.log('  - File Exists:', require('fs').existsSync(filePath));
       console.log('  - Script Exists:', require('fs').existsSync(scriptPath));
       console.log('  - Python Exists:', require('fs').existsSync(pythonPath));
+      console.log('  - Environment:', process.env.NODE_ENV || 'development');
+      console.log('  - Working Directory:', process.cwd());
       
       // Additional debugging
       const fs = require('fs');
@@ -725,6 +727,21 @@ class FileService {
         console.log('  - Scripts Directory Error:', err.message);
       }
       
+      // Check Python dependencies
+      try {
+        const venvLibPath = path.join(__dirname, '..', '..', 'venv', 'lib', 'python3.13', 'site-packages');
+        const gdalExists = fs.existsSync(path.join(venvLibPath, 'osgeo'));
+        const rasterioExists = fs.existsSync(path.join(venvLibPath, 'rasterio'));
+        const numpyExists = fs.existsSync(path.join(venvLibPath, 'numpy'));
+        
+        console.log('  - Python Dependencies Check:');
+        console.log('    - GDAL (osgeo):', gdalExists ? '✅' : '❌');
+        console.log('    - Rasterio:', rasterioExists ? '✅' : '❌');
+        console.log('    - NumPy:', numpyExists ? '✅' : '❌');
+      } catch (err) {
+        console.log('  - Dependencies Check Error:', err.message);
+      }
+      
       const pythonProcess = spawn(pythonPath, [scriptPath, filePath]);
       
       let output = '';
@@ -742,15 +759,31 @@ class FileService {
       
       // Handle process completion
       pythonProcess.on('close', (code) => {
+        console.log('🐍 Python Process Completed:');
+        console.log('  - Exit Code:', code);
+        console.log('  - Standard Output Length:', output.length);
+        console.log('  - Error Output Length:', errorOutput.length);
+        console.log('  - Raw Output Preview:', output.substring(0, 500));
+        
         if (code === 0) {
           try {
             // Parse JSON output from Python
             const result = JSON.parse(output);
+            console.log('✅ Python JSON Parsed Successfully:');
+            console.log('  - Has spatial_info:', !!result.spatial_info);
+            console.log('  - Has raster_info:', !!result.raster_info);
+            console.log('  - Has error:', !!result.error);
+            console.log('  - Keys:', Object.keys(result));
+            
             resolve({
               success: true,
               data: result
             });
           } catch (parseError) {
+            console.log('❌ JSON Parse Error:');
+            console.log('  - Parse Error:', parseError.message);
+            console.log('  - Raw Output:', output);
+            
             resolve({
               success: false,
               error: `Invalid JSON output from Python: ${parseError.message}`,
@@ -795,8 +828,29 @@ class FileService {
     try {
       console.log('💾 Saving extracted data to database...');
       console.log('  - File ID:', fileId);
-      console.log('  - Spatial Data:', JSON.stringify(extractedData.spatial_info, null, 2));
-      console.log('  - Raster Data:', JSON.stringify(extractedData.raster_info, null, 2));
+      console.log('  - Extracted Data Keys:', Object.keys(extractedData || {}));
+      console.log('  - Spatial Data:', extractedData?.spatial_info ? 'Present' : 'MISSING');
+      console.log('  - Raster Data:', extractedData?.raster_info ? 'Present' : 'MISSING');
+      
+      // Validate required data structure
+      if (!extractedData) {
+        throw new Error('Extracted data is null or undefined');
+      }
+      
+      if (!extractedData.spatial_info) {
+        throw new Error('Spatial info is missing from extracted data');
+      }
+      
+      if (!extractedData.raster_info) {
+        throw new Error('Raster info is missing from extracted data');
+      }
+      
+      if (!extractedData.spatial_info.bounding_box) {
+        throw new Error('Bounding box is missing from spatial info');
+      }
+      
+      console.log('  - Spatial Data Details:', JSON.stringify(extractedData.spatial_info, null, 2));
+      console.log('  - Raster Data Details:', JSON.stringify(extractedData.raster_info, null, 2));
       
       // Start transaction
       await this.db.executeQuery('BEGIN');
