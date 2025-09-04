@@ -1,8 +1,9 @@
 # Multi-stage build for Node.js + Python geospatial processing
 FROM python:3.11-slim-bookworm AS python-base
 
-# Fix repository sources to match server configuration
-RUN echo "deb https://ftp.debian.org/debian/ bookworm contrib main non-free non-free-firmware" > /etc/apt/sources.list && \
+# Fix repository sources - Debian 12 uses .sources files
+RUN rm -f /etc/apt/sources.list.d/*.sources && \
+    echo "deb https://ftp.debian.org/debian/ bookworm contrib main non-free non-free-firmware" > /etc/apt/sources.list && \
     echo "deb https://ftp.debian.org/debian/ bookworm-updates contrib main non-free non-free-firmware" >> /etc/apt/sources.list && \
     echo "deb https://security.debian.org/debian-security/ bookworm-security contrib main non-free non-free-firmware" >> /etc/apt/sources.list
 
