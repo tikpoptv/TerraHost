@@ -48,7 +48,7 @@ COPY . .
 RUN mkdir -p /app/scripts
 
 # Copy the specific script file with absolute path from build context
-COPY ./backend/scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
+COPY scripts/geotiff_extractor.py /app/scripts/geotiff_extractor.py
 
 # Alternative: Create a simple test script to verify the directory works
 RUN echo '#!/usr/bin/env python3' > /app/scripts/test_script.py \
