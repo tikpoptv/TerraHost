@@ -700,6 +700,8 @@ class FileService {
       console.log('  - Script Path:', scriptPath);
       console.log('  - File Path:', filePath);
       console.log('  - File Exists:', require('fs').existsSync(filePath));
+      console.log('  - Script Exists:', require('fs').existsSync(scriptPath));
+      console.log('  - Python Exists:', require('fs').existsSync(pythonPath));
       
       const pythonProcess = spawn(pythonPath, [scriptPath, filePath]);
       

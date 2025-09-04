@@ -44,10 +44,16 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy application code
 COPY . .
 
+# Copy scripts directory separately to ensure it's included
+COPY scripts/ /app/scripts/
+
 # Ensure scripts directory exists and has correct permissions
-RUN mkdir -p /app/scripts \
+RUN echo "=== Checking scripts directory ===" \
     && ls -la /app/scripts/ \
+    && echo "=== Checking if geotiff_extractor.py exists ===" \
+    && test -f /app/scripts/geotiff_extractor.py && echo "Script exists!" || echo "Script NOT found!" \
     && chmod +x /app/scripts/geotiff_extractor.py \
+    && echo "=== Final check ===" \
     && ls -la /app/scripts/geotiff_extractor.py
 
 # Create non-root user
