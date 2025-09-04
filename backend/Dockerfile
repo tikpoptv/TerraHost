@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     build-essential \
     pkg-config \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
