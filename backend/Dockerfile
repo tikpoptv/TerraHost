@@ -17,12 +17,16 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     curl \
+    python3-dev \
+    python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment and install Python dependencies
 COPY requirements.txt .
 RUN python -m venv /app/venv \
     && /app/venv/bin/pip install --upgrade pip \
+    && /app/venv/bin/pip install --no-cache-dir --find-links https://girder.github.io/large_image_wheels/ GDAL \
     && /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
     && chmod +x /app/venv/bin/python
 
