@@ -48,27 +48,10 @@ class DynamicGeoTIFFExtractor:
     def extract_everything(self):
         """รีดข้อมูล GeoTIFF ให้หมดแบบ dynamic"""
         try:
-            # Debug: Check file existence and permissions
-            import os
-            if not os.path.exists(self.file_path):
-                raise Exception(f"File does not exist: {self.file_path}")
-            
-            if not os.access(self.file_path, os.R_OK):
-                raise Exception(f"File is not readable: {self.file_path}")
-            
-            # Debug: Check GDAL version and capabilities
-            print(f"GDAL Version: {gdal.VersionInfo()}", file=sys.stderr)
-            print(f"GDAL Data Path: {gdal.GetConfigOption('GDAL_DATA')}", file=sys.stderr)
-            
             # เปิดไฟล์ GeoTIFF
             self.dataset = gdal.Open(self.file_path)
             if self.dataset is None:
-                gdal_error = gdal.GetLastErrorMsg()
-                raise Exception(f"Cannot open file: {self.file_path}. GDAL Error: {gdal_error}")
-            
-            # Debug: Log successful file opening
-            print(f"Successfully opened file: {self.file_path}", file=sys.stderr)
-            print(f"Dataset info: {self.dataset.RasterXSize}x{self.dataset.RasterYSize}, {self.dataset.RasterCount} bands", file=sys.stderr)
+                raise Exception(f"Cannot open file: {self.file_path}")
             
             # เริ่มรีดข้อมูล (เพิ่มข้อมูลดิบสำหรับการเก็บถาวร)
             raw_data = {
@@ -1342,13 +1325,6 @@ def main():
     
     file_path = sys.argv[1]
     
-    # Debug: Log environment information
-    print(f"Python version: {sys.version}", file=sys.stderr)
-    print(f"Working directory: {os.getcwd()}", file=sys.stderr)
-    print(f"File path argument: {file_path}", file=sys.stderr)
-    print(f"GDAL_DATA env: {os.environ.get('GDAL_DATA', 'Not set')}", file=sys.stderr)
-    print(f"PROJ_LIB env: {os.environ.get('PROJ_LIB', 'Not set')}", file=sys.stderr)
-    
     if not os.path.exists(file_path):
         print(json.dumps({
             "error": f"File not found: {file_path}",
@@ -1356,14 +1332,6 @@ def main():
             "extraction_timestamp": str(datetime.datetime.now())
         }, indent=2, default=safe_json_serialize))
         sys.exit(1)
-    
-    # Debug: Check file permissions
-    try:
-        file_stat = os.stat(file_path)
-        print(f"File size: {file_stat.st_size} bytes", file=sys.stderr)
-        print(f"File permissions: {oct(file_stat.st_mode)}", file=sys.stderr)
-    except Exception as e:
-        print(f"Error checking file stats: {e}", file=sys.stderr)
     
     # เริ่มรีดข้อมูล
     extractor = DynamicGeoTIFFExtractor(file_path)
