@@ -22,24 +22,19 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load API keys on mount and prevent body scroll
   useEffect(() => {
     if (isOpen) {
       loadApiKeys();
-      // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
     } else {
-      // Restore body scroll when modal is closed
       document.body.style.overflow = 'unset';
     }
 
-    // Cleanup function to restore scroll when component unmounts
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
 
-  // Load API keys
   const loadApiKeys = async () => {
     setIsLoading(true);
     setError(null);
@@ -59,9 +54,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
     }
   };
 
-  // Handle create API key
   const handleCreateApiKey = async () => {
-    // Validation
     const nameValidation = tokenService.validateApiKeyName(newApiKey.name);
     if (!nameValidation.isValid) {
       setError(nameValidation.error || 'Invalid name');
@@ -83,7 +76,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
         setCreatedApiKey(response.data.apiKey);
         setNewApiKey({ name: '', permissions: [], expiresAt: '' });
         setShowCreateForm(false);
-        loadApiKeys(); // Reload list
+        loadApiKeys();
       } else {
         setError(response.error || 'Failed to create API key');
       }
@@ -95,7 +88,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
     }
   };
 
-  // Handle delete API key
   const handleDeleteApiKey = async (apiKeyId: string) => {
     if (!confirm('Are you sure you want to delete this API key?')) {
       return;
@@ -104,7 +96,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
     try {
       const response = await tokenService.deleteApiKey(apiKeyId);
       if (response.success) {
-        loadApiKeys(); // Reload list
+        loadApiKeys();
       } else {
         setError(response.error || 'Failed to delete API key');
       }
@@ -114,12 +106,11 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
     }
   };
 
-  // Handle toggle API key status
   const handleToggleStatus = async (apiKeyId: string, currentStatus: boolean) => {
     try {
       const response = await tokenService.updateApiKeyStatus(apiKeyId, !currentStatus);
       if (response.success) {
-        loadApiKeys(); // Reload list
+        loadApiKeys();
       } else {
         setError(response.error || 'Failed to update API key status');
       }
@@ -129,7 +120,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
     }
   };
 
-  // Handle permission toggle
   const handlePermissionToggle = (permission: string) => {
     setNewApiKey(prev => ({
       ...prev,
@@ -139,7 +129,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
     }));
   };
 
-  // Reset form
   const resetForm = () => {
     setNewApiKey({ name: '', permissions: [], expiresAt: '' });
     setShowCreateForm(false);
@@ -147,9 +136,8 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
     setError(null);
   };
 
-  // Format date
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -163,7 +151,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">🔑 Manage API Keys</h2>
@@ -179,9 +166,7 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {/* Create New API Key Button */}
           <div className="mb-6">
             <button
               onClick={() => setShowCreateForm(true)}
@@ -196,13 +181,11 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
             </button>
           </div>
 
-          {/* Create Form */}
           {showCreateForm && (
             <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New API Key</h3>
               
               <div className="space-y-4">
-                {/* Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     API Key Name *
@@ -216,7 +199,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                   />
                 </div>
 
-                {/* Expires At */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Expiration Date (Optional)
@@ -229,7 +211,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                   />
                 </div>
 
-                {/* Permissions */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Permissions *
@@ -282,7 +263,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center space-x-3 pt-4">
                   <button
                     onClick={handleCreateApiKey}
@@ -302,7 +282,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
             </div>
           )}
 
-          {/* Created API Key Display */}
           {createdApiKey && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-start space-x-3">
@@ -315,13 +294,11 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                     Please save this API Key as it will not be shown again
                   </p>
                   
-                  {/* API Key */}
                   <div className="bg-white border border-green-300 rounded-lg p-3 mb-4">
                     <div className="text-xs text-gray-600 mb-1">API Key:</div>
                     <code className="text-sm text-green-800 break-all">{createdApiKey}</code>
                   </div>
 
-                  {/* Usage Information */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                     <div className="text-xs text-blue-600 mb-2 font-medium">📡 How to use this API Key:</div>
                     <div className="space-y-2 text-sm">
@@ -354,7 +331,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
             </div>
           )}
 
-          {/* Error Display */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <div className="flex items-start space-x-3">
@@ -374,7 +350,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
             </div>
           )}
 
-          {/* API Keys List */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Your API Keys</h3>
             
@@ -410,7 +385,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                           </span>
                         </div>
                         
-                        {/* Permissions */}
                         <div className="mb-3">
                           <div className="text-sm text-gray-600 mb-1">Permissions:</div>
                           <div className="flex flex-wrap gap-2">
@@ -425,7 +399,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                           </div>
                         </div>
 
-                        {/* Metadata */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                           <div>
                             <span className="font-medium">Created:</span>
@@ -446,7 +419,6 @@ export default function TokenManagementModal({ isOpen, onClose }: TokenManagemen
                         </div>
                       </div>
 
-                      {/* Actions */}
                       <div className="flex items-center space-x-2 ml-4">
                         <button
                           onClick={() => handleToggleStatus(apiKey.id, apiKey.isActive)}

@@ -9,67 +9,54 @@ class TokenController extends BaseController {
   }
 
   initializeRoutes() {
-    // สร้าง API key ใหม่
     this.router.post('/create', 
       AuthMiddleware.verifyToken, 
       this.createApiKey.bind(this)
     );
 
-    // ดึงรายการ API key ของผู้ใช้
     this.router.get('/list', 
       AuthMiddleware.verifyToken, 
       this.getUserApiKeys.bind(this)
     );
 
-    // ลบ API key
     this.router.delete('/:apiKeyId', 
       AuthMiddleware.verifyToken, 
       this.deleteApiKey.bind(this)
     );
 
-    // อัปเดตสถานะ API key
     this.router.patch('/:apiKeyId/status', 
       AuthMiddleware.verifyToken, 
       this.updateApiKeyStatus.bind(this)
     );
 
-    // ตรวจสอบ API key (สำหรับ external API)
     this.router.post('/validate', 
       this.validateApiKey.bind(this)
     );
 
-    // ตรวจสอบสิทธิ์
     this.router.post('/check-permission', 
       this.checkPermission.bind(this)
     );
 
-    // สร้าง session token
     this.router.post('/session/create', 
       AuthMiddleware.verifyToken, 
       this.createSessionToken.bind(this)
     );
 
-    // ตรวจสอบ session token
     this.router.post('/session/validate', 
       this.validateSessionToken.bind(this)
     );
 
-    // ลบ session token
     this.router.delete('/session/:token', 
       AuthMiddleware.verifyToken, 
       this.deleteSessionToken.bind(this)
     );
   }
 
-  /**
-   * สร้าง API key ใหม่
-   */
   async createApiKey(req, res) {
     try {
       const userId = req.user.id;
       const { name, permissions = [], expiresAt = null } = req.body;
 
-      // ตรวจสอบข้อมูลที่จำเป็น
       if (!name) {
         return res.status(400).json({
           success: false,
@@ -77,9 +64,7 @@ class TokenController extends BaseController {
         });
       }
 
-      // ตรวจสอบสิทธิ์ (เฉพาะ admin หรือ user ที่มีสิทธิ์)
       if (req.user.role !== 'admin') {
-        // ตรวจสอบว่าผู้ใช้มีสิทธิ์สร้าง API key หรือไม่
         const allowedPermissions = ['read:files', 'read:metadata', 'query:spatial'];
         const hasValidPermissions = permissions.every(perm => allowedPermissions.includes(perm));
         
@@ -103,7 +88,7 @@ class TokenController extends BaseController {
             isActive: result.data.is_active,
             expiresAt: result.data.expires_at,
             createdAt: result.data.created_at,
-            apiKey: result.data.apiKey // แสดงครั้งเดียว
+            apiKey: result.data.apiKey
           },
           message: 'API key created successfully. Please save this key as it will not be shown again.'
         });
@@ -122,9 +107,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * ดึงรายการ API key ของผู้ใช้
-   */
   async getUserApiKeys(req, res) {
     try {
       const userId = req.user.id;
@@ -158,9 +140,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * ลบ API key
-   */
   async deleteApiKey(req, res) {
     try {
       const userId = req.user.id;
@@ -188,9 +167,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * อัปเดตสถานะ API key
-   */
   async updateApiKeyStatus(req, res) {
     try {
       const userId = req.user.id;
@@ -226,9 +202,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * ตรวจสอบ API key (สำหรับ external API)
-   */
   async validateApiKey(req, res) {
     try {
       const { apiKey } = req.body;
@@ -268,9 +241,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * ตรวจสอบสิทธิ์
-   */
   async checkPermission(req, res) {
     try {
       const { apiKey, permission } = req.body;
@@ -307,9 +277,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * สร้าง session token
-   */
   async createSessionToken(req, res) {
     try {
       const userId = req.user.id;
@@ -341,9 +308,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * ตรวจสอบ session token
-   */
   async validateSessionToken(req, res) {
     try {
       const { token } = req.body;
@@ -377,9 +341,6 @@ class TokenController extends BaseController {
     }
   }
 
-  /**
-   * ลบ session token
-   */
   async deleteSessionToken(req, res) {
     try {
       const userId = req.user.id;

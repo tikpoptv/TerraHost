@@ -12,7 +12,6 @@ class AuthController extends BaseController {
 
   async register(req, res) {
     try {
-      // Validate input data
       const validation = AuthService.validateRegistrationData(req.body);
       if (!validation.isValid) {
         return res.status(400).json({
@@ -22,7 +21,6 @@ class AuthController extends BaseController {
         });
       }
 
-      // Register user
       const result = await AuthService.register(req.body);
 
       if (!result.success) {
@@ -48,7 +46,6 @@ class AuthController extends BaseController {
 
   async login(req, res) {
     try {
-      // Validate input data
       const validation = AuthService.validateLoginData(req.body);
       if (!validation.isValid) {
         return res.status(400).json({
@@ -58,7 +55,6 @@ class AuthController extends BaseController {
         });
       }
 
-      // Login user
       const { email, username, password } = req.body;
       const emailOrUsername = email || username;
       const result = await AuthService.login(emailOrUsername, password);
@@ -84,10 +80,8 @@ class AuthController extends BaseController {
     }
   }
 
-  // Get current auth status
   async getAuthStatus(req, res) {
     try {
-      // User info and session ID are already validated by middleware
       const user = req.user;
       const sessionId = req.sessionId;
       
@@ -120,10 +114,9 @@ class AuthController extends BaseController {
     }
   }
 
-  // Logout user (deactivate session)
   async logout(req, res) {
     try {
-      const sessionId = req.sessionId; // มาจาก JWT ที่ decode ใน middleware
+      const sessionId = req.sessionId;
 
       if (!sessionId) {
         return res.status(400).json({
@@ -132,7 +125,6 @@ class AuthController extends BaseController {
         });
       }
 
-      // Deactivate current session
       const result = await AuthService.logout(sessionId);
       
       if (result.success) {

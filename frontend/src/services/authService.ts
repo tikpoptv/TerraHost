@@ -41,7 +41,6 @@ class AuthService {
   private static readonly USER_KEY = 'auth_user';
   private static readonly SESSION_KEY = 'auth_session';
 
-  // Decode JWT token to extract session ID
   private decodeJWT(token: string): { sessionId?: string; userId?: string; exp?: number } | null {
     try {
       const payload = token.split('.')[1];
@@ -53,7 +52,6 @@ class AuthService {
     }
   }
 
-  // Login with email or username
   async login(credentials: LoginCredentials): Promise<{ success: boolean; data?: AuthResponse; error?: string }> {
     try {
       const response = await api.post<AuthResponse>('/auth/login', credentials);
@@ -64,11 +62,9 @@ class AuthService {
           hasToken: !!response.data.token 
         });
         
-        // Store token and user data (now flattened by API client)
         this.setToken(response.data.token);
         this.setUser(response.data.user);
         
-        // Extract and store session ID from JWT
         const decodedToken = this.decodeJWT(response.data.token);
         if (decodedToken?.sessionId) {
           this.setSessionId(decodedToken.sessionId);
@@ -93,7 +89,6 @@ class AuthService {
     }
   }
 
-  // Register new user
   async register(userData: RegisterData): Promise<{ success: boolean; data?: { user: User; message: string }; error?: string }> {
     try {
       const response = await api.post<{ user: User; message: string }>('/auth/register', userData);
@@ -117,29 +112,22 @@ class AuthService {
     }
   }
 
-  // Logout user
   async logout(): Promise<{ success: boolean; error?: string }> {
     try {
-      // Step 1: Call backend API to deactivate session
       const response = await api.post('/auth/logout');
       
       if (response.success) {
-        // Step 2: Clear local storage
         this.removeToken();
         this.removeUser();
         
-        // Step 3: Clear API client token
         api.removeToken();
         
-        // Note: Redirect will be handled by AuthProvider when auth state changes
         return { success: true };
       } else {
-        // Backend logout failed but still clear local data
         this.clearLocalAuth();
         return { success: false, error: response.error || 'Logout failed' };
       }
     } catch (error) {
-      // Network error - clear local data anyway for security
       this.clearLocalAuth();
       return { 
         success: false, 
@@ -148,23 +136,19 @@ class AuthService {
     }
   }
 
-  // Helper method to clear all local auth data
   private clearLocalAuth(): void {
     this.removeToken();
     this.removeUser();
     this.removeSessionId();
     api.removeToken();
     
-    // Note: Redirect will be handled by AuthProvider when auth state changes
   }
 
-  // Token management
   setToken(token: string): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem(AuthService.TOKEN_KEY, token);
       console.log('💾 Token stored in localStorage');
     }
-    // Also set in API client
     api.setToken(token);
     console.log('🔑 Token set in API client');
   }
@@ -180,11 +164,9 @@ class AuthService {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(AuthService.TOKEN_KEY);
     }
-    // Also remove from API client
     api.removeToken();
   }
 
-  // User data management
   setUser(user: User): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
@@ -216,7 +198,6 @@ class AuthService {
     }
   }
 
-  // Session ID management
   setSessionId(sessionId: string): void {
     if (typeof window !== 'undefined') {
       try {
@@ -244,7 +225,6 @@ class AuthService {
     }
   }
 
-  // Check if user is authenticated (local check only)
   isAuthenticated(): boolean {
     const token = this.getToken();
     const user = this.getUser();
@@ -254,33 +234,27 @@ class AuthService {
     return authenticated;
   }
 
-  // Get current user data
   getCurrentUser(): User | null {
     return this.getUser();
   }
 
-  // Check if token exists (doesn't verify with backend)
   hasToken(): boolean {
     return !!this.getToken();
   }
 
-  // Check if user has specific role
   hasRole(role: string): boolean {
     const user = this.getUser();
     return user?.role === role;
   }
 
-  // Check if user is admin
   isAdmin(): boolean {
     return this.hasRole('admin');
   }
 
-  // Quick logout method for emergency cases (no API call)
   quickLogout(): void {
     this.clearLocalAuth();
   }
 
-  // Check auth status with backend
   async checkAuthStatus(): Promise<{ success: boolean; data?: AuthStatusResponse; error?: string }> {
     try {
       const response = await api.get<AuthStatusResponse>('/auth/status');
@@ -291,7 +265,6 @@ class AuthService {
           data: response.data
         };
       } else {
-        // Invalid or expired token
         this.clearLocalAuth();
         return {
           success: false,
@@ -299,8 +272,6 @@ class AuthService {
         };
       }
     } catch (error) {
-      // Network error or server error
-      // Don't clear auth data on network errors, might be temporary
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to check auth status'
@@ -308,73 +279,61 @@ class AuthService {
     }
   }
 
-  // Initialize auth state (call on app startup)
   async initializeAuth(): Promise<{ success: boolean; authenticated: boolean }> {
     const token = this.getToken();
     
     if (!token) {
-      // No token stored
       return { success: true, authenticated: false };
     }
 
-    // Set token in API client for the status check
     api.setToken(token);
 
     try {
-      // Verify token with backend
       const statusResult = await this.checkAuthStatus();
       
       if (statusResult.success) {
-        // Token is valid and user is authenticated
         return { success: true, authenticated: true };
       } else {
-        // Token is invalid or expired, already cleared by checkAuthStatus
         return { success: true, authenticated: false };
       }
     } catch (error) {
-      // Network error - keep token for now, user can try later
       console.warn('Auth check failed:', error);
       return { success: false, authenticated: false };
     }
   }
 
-  // Validate login form
   validateLoginForm(credentials: LoginCredentials): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    // Check email or username (at least one must be provided)
     if (!credentials.email && !credentials.username) {
-      errors.push('Email หรือชื่อผู้ใช้จำเป็นต้องระบุ');
+      errors.push('Email or username is required');
     }
 
-    // Validate email format if email is provided
     if (credentials.email) {
       if (credentials.email.trim().length === 0) {
-        errors.push('อีเมลไม่สามารถเป็นค่าว่างได้');
+        errors.push('Email cannot be empty');
       } else {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(credentials.email)) {
-          errors.push('รูปแบบอีเมลไม่ถูกต้อง');
+          errors.push('Invalid email format');
         }
       }
     }
 
-    // Validate username format if username is provided
     if (credentials.username) {
       if (credentials.username.trim().length === 0) {
-        errors.push('ชื่อผู้ใช้ไม่สามารถเป็นค่าว่างได้');
+        errors.push('Username cannot be empty');
       } else if (credentials.username.length < 3) {
-        errors.push('ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร');
+        errors.push('Username must be at least 3 characters');
       } else if (!/^[a-zA-Z0-9_]+$/.test(credentials.username)) {
-        errors.push('ชื่อผู้ใช้สามารถใช้ได้เฉพาะ a-z, A-Z, 0-9, และ _');
+        errors.push('Username can only contain a-z, A-Z, 0-9, and _');
       }
     }
 
-    // Check password
     if (!credentials.password) {
-      errors.push('รหัสผ่านจำเป็นต้องระบุ');
+      errors.push('Password is required');
     } else if (credentials.password.length < 6) {
-      errors.push('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+      errors.push('Password must be at least 6 characters');
     }
 
     return {
@@ -383,22 +342,18 @@ class AuthService {
     };
   }
 
-  // Validate registration form
   validateRegisterForm(userData: RegisterData): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    // Check name
     if (!userData.name || userData.name.trim().length < 2) {
       errors.push('Name must be at least 2 characters');
     }
 
-    // Check email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!userData.email || !emailRegex.test(userData.email)) {
       errors.push('Valid email is required');
     }
 
-    // Check password
     if (!userData.password || userData.password.length < 6) {
       errors.push('Password must be at least 6 characters');
     }

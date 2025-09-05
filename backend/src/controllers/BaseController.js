@@ -6,15 +6,12 @@ class BaseController {
     this.initializeRoutes();
   }
 
-  initializeRoutes() {
-    // Override in child classes
-  }
+  initializeRoutes() {}
 
   getRouter() {
     return this.router;
   }
 
-  // Helper method for success responses
   sendSuccess(res, data, message = 'Success', statusCode = 200) {
     res.status(statusCode).json({
       success: true,
@@ -24,7 +21,6 @@ class BaseController {
     });
   }
 
-  // Helper method for error responses
   sendError(res, message = 'Internal Server Error', statusCode = 500, error = null) {
     res.status(statusCode).json({
       success: false,

@@ -9,47 +9,40 @@ class SpatialController extends BaseController {
   }
 
   initializeRoutes() {
-    // Query ข้อมูลตามพิกัด (ต้องมี API key)
     this.router.get('/query', 
       ApiKeyMiddleware.verifyApiKey.bind(ApiKeyMiddleware),
       this.queryByCoordinates.bind(this)
     );
 
-    // Query ข้อมูลทั้งหมดในพื้นที่ (ต้องมี API key)
     this.router.get('/query-all', 
       ApiKeyMiddleware.verifyApiKey.bind(ApiKeyMiddleware),
       this.queryAllDataInArea.bind(this)
     );
 
-    // Query ข้อมูลในพื้นที่ (ต้องมี API key + permission)
     this.router.get('/area', 
       ApiKeyMiddleware.verifyApiKey.bind(ApiKeyMiddleware),
       ApiKeyMiddleware.requirePermission('query:spatial'),
       this.queryByArea.bind(this)
     );
 
-    // Get spatial metadata ของไฟล์ (ต้องมี API key + permission)
     this.router.get('/files/:fileId/metadata', 
       ApiKeyMiddleware.verifyApiKey.bind(ApiKeyMiddleware),
       ApiKeyMiddleware.requirePermission('read:metadata'),
       this.getFileSpatialMetadata.bind(this)
     );
 
-    // Search files ในพื้นที่ (ต้องมี API key + permission)
     this.router.get('/files/search', 
       ApiKeyMiddleware.verifyApiKey.bind(ApiKeyMiddleware),
       ApiKeyMiddleware.requirePermission('read:files'),
       this.searchFilesInArea.bind(this)
     );
 
-    // Time series analysis (ต้องมี API key + permission)
     this.router.get('/timeseries', 
       ApiKeyMiddleware.verifyApiKey.bind(ApiKeyMiddleware),
       ApiKeyMiddleware.requirePermission('query:spatial'),
       this.getTimeSeriesData.bind(this)
     );
 
-    // File overview - เช็คข้อมูลไฟล์ทั้งหมด (ต้องมี API key + permission)
     this.router.get('/overview', 
       ApiKeyMiddleware.verifyApiKey.bind(ApiKeyMiddleware),
       ApiKeyMiddleware.requirePermission('read:files'),
@@ -57,15 +50,11 @@ class SpatialController extends BaseController {
     );
   }
 
-  /**
-   * Query ข้อมูลตามพิกัด (lat, lng)
-   */
   async queryByCoordinates(req, res) {
     try {
       const { lat, lng } = req.query;
       const apiUser = req.apiUser;
 
-      // ตรวจสอบ parameters
       if (!lat || !lng) {
         return res.status(400).json({
           success: false,
@@ -73,7 +62,6 @@ class SpatialController extends BaseController {
         });
       }
 
-      // แปลงเป็นตัวเลข
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
 
@@ -84,7 +72,6 @@ class SpatialController extends BaseController {
         });
       }
 
-      // ตรวจสอบพิกัด
       if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
         return res.status(400).json({
           success: false,
@@ -94,14 +81,12 @@ class SpatialController extends BaseController {
 
       console.log(`🗺️ Spatial query for coordinates: ${latitude}, ${longitude} by user: ${apiUser.userName}`);
 
-      // Query ข้อมูลจาก database
       const result = await this.spatialService.queryByCoordinates(latitude, longitude);
 
       if (result.success) {
-        // ใช้ response format ใหม่จาก SpatialService
         const responseData = {
           success: true,
-          ...result, // รวม message, coordinates, suggestion จาก service
+          ...result,
           queryTime: new Date().toISOString(),
           userInfo: {
             userId: apiUser.userId,
@@ -126,16 +111,11 @@ class SpatialController extends BaseController {
     }
   }
 
-  /**
-   * Query ข้อมูลทั้งหมดในพื้นที่ (ระบุพิกัดแล้วได้ข้อมูลทั้งหมด)
-   * รองรับการฟิลเตอร์ตามวันที่สำหรับ time series analysis
-   */
   async queryAllDataInArea(req, res) {
     try {
-      const { lat, lng, radius = 5, startDate, endDate } = req.query; // default radius 5km
+      const { lat, lng, radius = 5, startDate, endDate } = req.query;
       const apiUser = req.apiUser;
 
-      // ตรวจสอบ parameters
       if (!lat || !lng) {
         return res.status(400).json({
           success: false,
@@ -143,7 +123,6 @@ class SpatialController extends BaseController {
         });
       }
 
-      // แปลงเป็นตัวเลข
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
       const radiusKm = parseFloat(radius);
@@ -155,7 +134,6 @@ class SpatialController extends BaseController {
         });
       }
 
-      // ตรวจสอบพิกัด
       if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
         return res.status(400).json({
           success: false,
@@ -165,7 +143,6 @@ class SpatialController extends BaseController {
 
       console.log(`🗺️ Querying ALL data in area: center(${latitude}, ${longitude}), radius: ${radiusKm}km by user: ${apiUser.userName}`);
 
-      // สร้าง date filter ถ้ามี
       let dateFilter = null;
       if (startDate || endDate) {
         dateFilter = {};
@@ -174,13 +151,12 @@ class SpatialController extends BaseController {
         console.log(`📅 Date filter: ${startDate || 'no start'} to ${endDate || 'no end'}`);
       }
 
-      // Query ข้อมูลทั้งหมดในพื้นที่
       const result = await this.spatialService.queryAllDataInArea(latitude, longitude, radiusKm, dateFilter);
 
       if (result.success) {
         res.status(200).json({
           success: true,
-          ...result, // รวม message, data, summary จาก service
+          ...result,
           queryTime: new Date().toISOString(),
           queryParams: {
             center: { lat: latitude, lng: longitude },
@@ -207,9 +183,6 @@ class SpatialController extends BaseController {
     }
   }
 
-  /**
-   * Query ข้อมูลในพื้นที่ (polygon หรือ radius)
-   */
   async queryByArea(req, res) {
     try {
       const { polygon, centerLat, centerLng, radius } = req.query;
@@ -219,10 +192,8 @@ class SpatialController extends BaseController {
 
       let result;
       if (polygon) {
-        // Query ด้วย polygon
         result = await this.spatialService.queryByPolygon(polygon);
       } else if (centerLat && centerLng && radius) {
-        // Query ด้วย circle (center + radius)
         const centerLatNum = parseFloat(centerLat);
         const centerLngNum = parseFloat(centerLng);
         const radiusNum = parseFloat(radius);
@@ -236,10 +207,9 @@ class SpatialController extends BaseController {
       }
 
       if (result.success) {
-        // ใช้ response format ใหม่จาก SpatialService
         const responseData = {
           success: true,
-          ...result, // รวม message, area, suggestion จาก service
+          ...result,
           queryTime: new Date().toISOString()
         };
         
@@ -259,9 +229,6 @@ class SpatialController extends BaseController {
     }
   }
 
-  /**
-   * Get spatial metadata ของไฟล์
-   */
   async getFileSpatialMetadata(req, res) {
     try {
       const { fileId } = req.params;
@@ -291,9 +258,6 @@ class SpatialController extends BaseController {
     }
   }
 
-  /**
-   * Search files ในพื้นที่
-   */
   async searchFilesInArea(req, res) {
     try {
       const { bbox, timeRange, fileTypes } = req.query;
@@ -309,10 +273,9 @@ class SpatialController extends BaseController {
       });
 
       if (result.success) {
-        // ใช้ response format ใหม่จาก SpatialService
         const responseData = {
           success: true,
-          ...result, // รวม message, filters, suggestion จาก service
+          ...result,
           queryTime: new Date().toISOString()
         };
         
@@ -332,15 +295,11 @@ class SpatialController extends BaseController {
     }
   }
 
-  /**
-   * Time series analysis - วิเคราะห์ข้อมูลตามเวลา
-   */
   async getTimeSeriesData(req, res) {
     try {
       const { lat, lng, radius = 5, startDate, endDate, analysisType = 'all' } = req.query;
       const apiUser = req.apiUser;
 
-      // ตรวจสอบ parameters
       if (!lat || !lng) {
         return res.status(400).json({
           success: false,
@@ -355,7 +314,6 @@ class SpatialController extends BaseController {
         });
       }
 
-      // แปลงเป็นตัวเลข
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
       const radiusKm = parseFloat(radius);
@@ -367,7 +325,6 @@ class SpatialController extends BaseController {
         });
       }
 
-      // ตรวจสอบพิกัด
       if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
         return res.status(400).json({
           success: false,
@@ -375,7 +332,6 @@ class SpatialController extends BaseController {
         });
       }
 
-      // ตรวจสอบวันที่
       const start = new Date(startDate);
       const end = new Date(endDate);
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
@@ -394,22 +350,19 @@ class SpatialController extends BaseController {
 
       console.log(`📊 Time series analysis: center(${latitude}, ${longitude}), radius: ${radiusKm}km, period: ${startDate} to ${endDate} by user: ${apiUser.userName}`);
 
-      // สร้าง date filter
       const dateFilter = {
         startDate: startDate,
         endDate: endDate
       };
 
-      // Query ข้อมูลทั้งหมดในพื้นที่และช่วงเวลา
       const result = await this.spatialService.queryAllDataInArea(latitude, longitude, radiusKm, dateFilter);
 
       if (result.success) {
-        // สร้าง time series analysis
         const timeSeriesAnalysis = this.createTimeSeriesAnalysis(result.data, analysisType);
 
         res.status(200).json({
           success: true,
-          ...result, // รวม message, data, summary, timeSeriesSummary จาก service
+          ...result,
           analysis: {
             type: analysisType,
             timeSeriesAnalysis: timeSeriesAnalysis
@@ -441,9 +394,6 @@ class SpatialController extends BaseController {
     }
   }
 
-  /**
-   * สร้าง time series analysis
-   */
   createTimeSeriesAnalysis(files, analysisType) {
     const analysis = {
       type: analysisType,
@@ -463,18 +413,15 @@ class SpatialController extends BaseController {
       recommendations: []
     };
 
-    // จัดกลุ่มข้อมูลตามวันที่
     files.forEach(file => {
       if (file.acquisitionDate) {
         const dateStr = file.acquisitionDate;
         
-        // File count by date
         if (!analysis.temporalTrends.fileCountByDate[dateStr]) {
           analysis.temporalTrends.fileCountByDate[dateStr] = 0;
         }
         analysis.temporalTrends.fileCountByDate[dateStr]++;
 
-        // Average file size by date
         if (!analysis.temporalTrends.averageFileSizeByDate[dateStr]) {
           analysis.temporalTrends.averageFileSizeByDate[dateStr] = {
             totalSize: 0,
@@ -484,7 +431,6 @@ class SpatialController extends BaseController {
         analysis.temporalTrends.averageFileSizeByDate[dateStr].totalSize += file.fileSize;
         analysis.temporalTrends.averageFileSizeByDate[dateStr].count++;
 
-        // Processing time by date
         if (file.processing && file.processing.processingTime) {
           if (!analysis.temporalTrends.processingTimeByDate[dateStr]) {
             analysis.temporalTrends.processingTimeByDate[dateStr] = {
@@ -498,7 +444,6 @@ class SpatialController extends BaseController {
       }
     });
 
-    // คำนวณค่าเฉลี่ย
     Object.keys(analysis.temporalTrends.averageFileSizeByDate).forEach(date => {
       const data = analysis.temporalTrends.averageFileSizeByDate[date];
       analysis.temporalTrends.averageFileSizeByDate[date] = Math.round(data.totalSize / data.count);
@@ -509,7 +454,6 @@ class SpatialController extends BaseController {
       analysis.temporalTrends.processingTimeByDate[date] = Math.round(data.totalTime / data.count);
     });
 
-    // สร้างคำแนะนำ
     const totalFiles = files.length;
     const uniqueDates = Object.keys(analysis.temporalTrends.fileCountByDate).length;
     
@@ -530,16 +474,12 @@ class SpatialController extends BaseController {
     return analysis;
   }
 
-  /**
-   * File overview - เช็คข้อมูลไฟล์ทั้งหมด
-   */
   async getFileOverview(req, res) {
     try {
       const apiUser = req.apiUser;
       
       console.log(`📊 File overview request by user: ${apiUser.userName}`);
 
-      // เรียกใช้ service เพื่อดึงข้อมูล overview
       const result = await this.spatialService.getFileOverview();
 
       if (result.success) {

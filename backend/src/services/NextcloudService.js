@@ -6,30 +6,26 @@ class NextcloudService {
     this.username = process.env.NEXTCLOUD_USERNAME || 'admin';
     this.password = process.env.NEXTCLOUD_PASSWORD || 'password';
     
-    // Create axios instance with basic auth
     this.client = axios.create({
       baseURL: this.baseUrl,
       auth: {
         username: this.username,
         password: this.password
       },
-      timeout: 300000, // 5 minutes timeout for large files
+      timeout: 300000,
       maxContentLength: Infinity,
       maxBodyLength: Infinity
     });
   }
 
-  // Get user's files path dynamically
   getUserFilesPath() {
     return `/remote.php/dav/files/${this.username}`;
   }
 
-  // Get TerraHost folder path
   getTerraHostPath() {
     return `${this.getUserFilesPath()}/TerraHost`;
   }
 
-  // Test connection to Nextcloud
   async testConnection() {
     try {
       const response = await this.client.get('/ocs/v1.php/cloud/capabilities');
@@ -50,10 +46,8 @@ class NextcloudService {
     }
   }
 
-  // Create directory in Nextcloud
   async createDirectory(dirPath) {
     try {
-      // Always create directories under TerraHost folder
       const fullPath = `${this.getTerraHostPath()}${dirPath}`;
       
       const response = await this.client.request({
@@ -72,7 +66,6 @@ class NextcloudService {
         }
       };
     } catch (error) {
-      // Directory might already exist, which is fine
       if (error.response?.status === 405) {
         return {
           success: true,
@@ -91,10 +84,8 @@ class NextcloudService {
     }
   }
 
-  // Upload file to Nextcloud
   async uploadFile(fileBuffer, filename, remotePath = '') {
     try {
-      // Ensure directory exists
       if (remotePath) {
         const dirResult = await this.createDirectory(remotePath);
         if (!dirResult.success) {
@@ -104,7 +95,6 @@ class NextcloudService {
 
       const fullPath = `${this.getTerraHostPath()}${remotePath}/${filename}`;
       
-      // Upload file using PUT method
       const response = await this.client.put(fullPath, fileBuffer, {
         headers: {
           'Content-Type': 'image/tiff',
@@ -138,7 +128,6 @@ class NextcloudService {
     }
   }
 
-  // Get file info from Nextcloud
   async getFileInfo(remotePath) {
     try {
       const fullPath = `${this.getTerraHostPath()}${remotePath}`;
@@ -186,40 +175,32 @@ class NextcloudService {
     }
   }
 
-  // Download file from Nextcloud
   async downloadFile(remotePath, localFilePath) {
     try {
       const fs = require('fs');
       const path = require('path');
       
-      // Ensure local directory exists
       const localDir = path.dirname(localFilePath);
       if (!fs.existsSync(localDir)) {
         fs.mkdirSync(localDir, { recursive: true });
       }
       
-      // Convert Nextcloud path to full URL
       let fullPath;
       if (remotePath.startsWith('/remote.php/dav/files/')) {
-        // Full Nextcloud path provided
         fullPath = remotePath;
       } else {
-        // Relative path, prepend TerraHost path
         fullPath = `${this.getTerraHostPath()}${remotePath}`;
       }
       
       console.log('📥 Downloading from Nextcloud:', fullPath);
       console.log('📁 Saving to local:', localFilePath);
       
-      // Download file
       const response = await this.client.get(fullPath, {
         responseType: 'stream'
       });
       
-      // Create write stream
       const writer = fs.createWriteStream(localFilePath);
       
-      // Pipe response to file
       response.data.pipe(writer);
       
       return new Promise((resolve, reject) => {
@@ -261,7 +242,6 @@ class NextcloudService {
     }
   }
 
-  // Delete file from Nextcloud
   async deleteFile(remotePath) {
     try {
       const fullPath = `${this.getTerraHostPath()}${remotePath}`;
@@ -291,7 +271,6 @@ class NextcloudService {
     }
   }
 
-  // List files in directory
   async listFiles(remotePath = '') {
     try {
       const fullPath = `${this.getTerraHostPath()}${remotePath}`;
@@ -330,15 +309,11 @@ class NextcloudService {
     }
   }
 
-  // Parse XML response to get file list
   parseFileList(xmlData) {
-    // Simple XML parsing - in production, use proper XML parser
     const files = [];
     const fileMatches = xmlData.match(/<d:response>/g);
     
     if (fileMatches) {
-      // Extract basic file info from XML
-      // This is a simplified parser - you might want to use xml2js or similar
       const sizeMatches = xmlData.match(/<d:getcontentlength>(\d+)<\/d:getcontentlength>/g);
       const dateMatches = xmlData.match(/<d:getlastmodified>([^<]+)<\/d:getlastmodified>/g);
       
@@ -350,7 +325,7 @@ class NextcloudService {
           files.push({
             size: parseInt(size),
             lastModified: new Date(date),
-            isDirectory: false // Simplified - would need more parsing
+            isDirectory: false
           });
         }
       }
@@ -359,19 +334,17 @@ class NextcloudService {
     return files;
   }
 
-  // Get download URL for file
   getDownloadUrl(remotePath) {
     const fullPath = `${this.getTerraHostPath()}${remotePath}`;
     return `${this.baseUrl}${fullPath}`;
   }
 
-  // Get public share URL (if sharing is enabled)
   async createPublicShare(remotePath, permissions = 'read') {
     try {
       const shareData = {
         path: `${this.getTerraHostPath()}${remotePath}`,
-        shareType: 3, // Public link
-        permissions: permissions === 'read' ? 1 : 3, // 1=read, 3=read+write
+        shareType: 3,
+        permissions: permissions === 'read' ? 1 : 3,
         publicUpload: false
       };
 

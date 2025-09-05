@@ -11,23 +11,19 @@ export default function Home() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        // มี auth → ไป dashboard
         console.log('🏠 Authenticated user, redirecting to dashboard');
         router.push('/dashboard');
       } else {
-        // ไม่มี auth → ไป login
         console.log('🏠 Unauthenticated user, redirecting to login');
         router.push('/login');
       }
     }
   }, [isAuthenticated, isLoading, router]);
-
-  // Show loading during redirect
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-        <p className="text-gray-600">กำลังเปลี่ยนเส้นทาง...</p>
+        <p className="text-gray-600">Redirecting...</p>
       </div>
     </div>
   );

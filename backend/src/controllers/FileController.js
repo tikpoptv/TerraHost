@@ -4,14 +4,12 @@ const DataVerificationService = require('../services/DataVerificationService');
 const AuthMiddleware = require('../middleware/authMiddleware');
 const multer = require('multer');
 
-// Configure multer for memory storage
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB limit
+    fileSize: 500 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
-    // Only allow GeoTIFF files
     if (file.mimetype === 'image/tiff' || file.mimetype === 'image/geotiff' || 
         file.originalname.toLowerCase().endsWith('.tiff') || 
         file.originalname.toLowerCase().endsWith('.tif')) {
@@ -30,38 +28,32 @@ class FileController extends BaseController {
   }
 
   initializeRoutes() {
-    // File upload endpoint
     this.router.post('/upload', 
       AuthMiddleware.verifyToken, 
       upload.single('geotiff'), 
       this.uploadGeoTIFF.bind(this)
     );
     
-    // Get user's files
     this.router.get('/files', 
       AuthMiddleware.verifyToken, 
       this.getUserFiles.bind(this)
     );
     
-    // Get specific file details
     this.router.get('/files/:fileId', 
       AuthMiddleware.verifyToken, 
       this.getFileDetails.bind(this)
     );
     
-    // Delete file
     this.router.delete('/files/:fileId', 
       AuthMiddleware.verifyToken, 
       this.deleteFile.bind(this)
     );
 
-    // Nextcloud connection test
     this.router.get('/nextcloud/test', 
       AuthMiddleware.verifyToken, 
       this.testNextcloudConnection.bind(this)
     );
 
-    // GeoTIFF Processing endpoints
     this.router.post('/:fileId/process', 
       AuthMiddleware.verifyToken, 
       this.processGeoTIFF.bind(this)
@@ -78,7 +70,6 @@ class FileController extends BaseController {
     );
   }
 
-  // Upload single GeoTIFF file
   async uploadGeoTIFF(req, res) {
     try {
       if (!req.file) {
@@ -120,10 +111,9 @@ class FileController extends BaseController {
     }
   }
 
-  // Get all files (shared across users)
   async getUserFiles(req, res) {
     try {
-      const userId = req.user.id; // Keep for compatibility but not used in filtering
+      const userId = req.user.id;
       const { page = 1, limit = 20, status, search, session_status } = req.query;
 
       const result = await this.fileService.getUserFiles(userId, {
@@ -148,10 +138,9 @@ class FileController extends BaseController {
     }
   }
 
-  // Get specific file details (shared across users)
   async getFileDetails(req, res) {
     try {
-      const userId = req.user.id; // Keep for compatibility but not used in filtering
+      const userId = req.user.id;
       const { fileId } = req.params;
 
       const result = await this.fileService.getFileDetails(userId, fileId);
@@ -177,10 +166,9 @@ class FileController extends BaseController {
     }
   }
 
-  // Delete file (shared across users)
   async deleteFile(req, res) {
     try {
-      const userId = req.user.id; // Keep for compatibility but not used in filtering
+      const userId = req.user.id;
       const { fileId } = req.params;
 
       const result = await this.fileService.deleteFile(userId, fileId);
@@ -206,7 +194,6 @@ class FileController extends BaseController {
     }
   }
 
-  // Test Nextcloud connection
   async testNextcloudConnection(req, res) {
     try {
       const result = await this.fileService.testNextcloudConnection();
@@ -225,7 +212,6 @@ class FileController extends BaseController {
     }
   }
 
-  // Process GeoTIFF file
   async processGeoTIFF(req, res) {
     try {
       const userId = req.user.id;
@@ -261,7 +247,6 @@ class FileController extends BaseController {
     }
   }
 
-  // Get processing status
   async getProcessingStatus(req, res) {
     try {
       const userId = req.user.id;
@@ -278,10 +263,7 @@ class FileController extends BaseController {
 
       const file = result.data;
       
-      // Check if data actually exists in processing tables
       const processingDataCheck = await this.fileService.checkProcessingDataExists(file.id);
-      
-      // Get processing session details if available
       let sessionDetails = null;
       try {
         const sessionQuery = `
@@ -299,13 +281,10 @@ class FileController extends BaseController {
         }
       } catch (error) {
         console.error('Error getting session details:', error);
-        // Continue without session details
       }
 
-      // Determine processing status based on session and data
       let processingStatus = 'not_started';
       if (sessionDetails) {
-        // Use session status as primary source (ถูกต้องแล้ว!)
         switch (sessionDetails.status) {
           case 'started':
             processingStatus = 'initializing';
@@ -323,7 +302,6 @@ class FileController extends BaseController {
             processingStatus = 'unknown';
         }
       } else {
-        // No session found - cannot determine status reliably
         processingStatus = 'unknown';
       }
       
@@ -360,13 +338,11 @@ class FileController extends BaseController {
     }
   }
 
-  // Get file metadata (extracted data)
   async getFileMetadata(req, res) {
     try {
       const userId = req.user.id;
       const { fileId } = req.params;
 
-      // Get file details first
       const fileResult = await this.fileService.getFileDetails(userId, fileId);
       if (!fileResult.success) {
         return res.status(404).json({
@@ -377,7 +353,6 @@ class FileController extends BaseController {
 
       const file = fileResult.data;
 
-      // Check if file is processed
       if (file.upload_status !== 'processed') {
         return res.status(400).json({
           success: false,
@@ -386,7 +361,6 @@ class FileController extends BaseController {
         });
       }
 
-      // Get spatial metadata from database
       const metadataQuery = `
         SELECT 
           sm.*,

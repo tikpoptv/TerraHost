@@ -10,35 +10,23 @@ class StatsController extends BaseController {
   }
 
   initializeRoutes() {
-    // Get comprehensive dashboard statistics
     this.router.get('/dashboard', AuthMiddleware.verifyToken, this.getDashboardStats.bind(this));
     
-    // Get file statistics
     this.router.get('/files', AuthMiddleware.verifyToken, this.getFileStats.bind(this));
     
-    // Get processing statistics
     this.router.get('/processing', AuthMiddleware.verifyToken, this.getProcessingStats.bind(this));
     
-    // Get storage statistics
     this.router.get('/storage', AuthMiddleware.verifyToken, this.getStorageStats.bind(this));
     
-    // Get data extraction statistics
     this.router.get('/extraction', AuthMiddleware.verifyToken, this.getExtractionStats.bind(this));
     
-    // Get detailed file statistics
     this.router.get('/files/detailed', AuthMiddleware.verifyToken, this.getDetailedFileStats.bind(this));
     
-    // Get detailed processing statistics
     this.router.get('/processing/detailed', AuthMiddleware.verifyToken, this.getDetailedProcessingStats.bind(this));
     
-    // Get storage usage over time
     this.router.get('/storage/usage-over-time', AuthMiddleware.verifyToken, this.getStorageUsageOverTime.bind(this));
   }
 
-  /**
-   * Get comprehensive dashboard statistics
-   * GET /stats/dashboard
-   */
   async getDashboardStats(req, res) {
     try {
       const userId = req.user.id;
@@ -51,10 +39,6 @@ class StatsController extends BaseController {
     }
   }
 
-  /**
-   * Get file statistics
-   * GET /stats/files
-   */
   async getFileStats(req, res) {
     try {
       const userId = req.user.id;
@@ -67,10 +51,6 @@ class StatsController extends BaseController {
     }
   }
 
-  /**
-   * Get processing statistics
-   * GET /stats/processing
-   */
   async getProcessingStats(req, res) {
     try {
       const userId = req.user.id;
@@ -83,10 +63,6 @@ class StatsController extends BaseController {
     }
   }
 
-  /**
-   * Get storage statistics
-   * GET /stats/storage
-   */
   async getStorageStats(req, res) {
     try {
       const userId = req.user.id;
@@ -99,10 +75,6 @@ class StatsController extends BaseController {
     }
   }
 
-  /**
-   * Get data extraction statistics
-   * GET /stats/extraction
-   */
   async getExtractionStats(req, res) {
     try {
       const userId = req.user.id;
@@ -115,10 +87,6 @@ class StatsController extends BaseController {
     }
   }
 
-  /**
-   * Get detailed file statistics with breakdown
-   * GET /stats/files/detailed
-   */
   async getDetailedFileStats(req, res) {
     try {
       const userId = req.user.id;
@@ -131,10 +99,6 @@ class StatsController extends BaseController {
     }
   }
 
-  /**
-   * Get detailed processing statistics with status breakdown
-   * GET /stats/processing/detailed
-   */
   async getDetailedProcessingStats(req, res) {
     try {
       const userId = req.user.id;
@@ -147,10 +111,6 @@ class StatsController extends BaseController {
     }
   }
 
-  /**
-   * Get storage usage over time
-   * GET /stats/storage/usage-over-time?days=30
-   */
   async getStorageUsageOverTime(req, res) {
     try {
       const userId = req.user.id;

@@ -3,30 +3,24 @@ const DatabaseService = require('./DatabaseService');
 
 class TokenService {
   constructor() {
-    this.db = DatabaseService; // DatabaseService เป็น instance แล้ว
+    this.db = DatabaseService;
   }
 
-  /**
-   * สร้าง API key ใหม่
-   */
   async createApiKey(userId, name, permissions = [], expiresAt = null) {
     try {
       console.log('🔑 Creating API key with params:', { userId, name, permissions, expiresAt });
       
-      // สร้าง API key แบบสุ่ม
       const apiKey = this.generateApiKey();
       const keyHash = this.hashApiKey(apiKey);
       
       console.log('🔑 Generated API key hash:', keyHash.substring(0, 20) + '...');
 
-      // บันทึกลงฐานข้อมูล
       const query = `
         INSERT INTO api_keys (user_id, name, key_hash, permissions, expires_at)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id, name, permissions, is_active, expires_at, created_at
       `;
 
-      // แปลง empty string เป็น null สำหรับ expiresAt
       const expiresAtValue = expiresAt && expiresAt.trim() !== '' ? expiresAt : null;
       
       console.log('🔑 Executing query with params:', [userId, name, keyHash.substring(0, 20) + '...', permissions, expiresAtValue]);
@@ -42,7 +36,7 @@ class TokenService {
           success: true,
           data: {
             ...result.data[0],
-            apiKey: apiKey // ส่งคืน API key ที่ยังไม่ได้ hash (แสดงครั้งเดียว)
+            apiKey: apiKey
           }
         };
       }
@@ -59,9 +53,6 @@ class TokenService {
     }
   }
 
-  /**
-   * ตรวจสอบ API key
-   */
   async validateApiKey(apiKey) {
     try {
       const keyHash = this.hashApiKey(apiKey);
@@ -86,7 +77,6 @@ class TokenService {
 
       const apiKeyData = result.data[0];
 
-      // ตรวจสอบสถานะ
       if (!apiKeyData.is_active || !apiKeyData.user_active) {
         return {
           success: false,
@@ -94,7 +84,6 @@ class TokenService {
         };
       }
 
-      // ตรวจสอบวันหมดอายุ
       if (apiKeyData.expires_at && new Date(apiKeyData.expires_at) < new Date()) {
         return {
           success: false,
@@ -102,7 +91,6 @@ class TokenService {
         };
       }
 
-      // อัปเดต last_used
       await this.updateLastUsed(apiKeyData.id);
 
       return {
@@ -124,9 +112,6 @@ class TokenService {
     }
   }
 
-  /**
-   * ตรวจสอบสิทธิ์
-   */
   async checkPermission(apiKey, requiredPermission) {
     try {
       const validation = await this.validateApiKey(apiKey);
@@ -156,9 +141,6 @@ class TokenService {
     }
   }
 
-  /**
-   * ดึงรายการ API key ของผู้ใช้
-   */
   async getUserApiKeys(userId) {
     try {
       const query = `
@@ -188,9 +170,6 @@ class TokenService {
     }
   }
 
-  /**
-   * ลบ API key
-   */
   async deleteApiKey(userId, apiKeyId) {
     try {
       const query = `
@@ -221,9 +200,6 @@ class TokenService {
     }
   }
 
-  /**
-   * อัปเดตสถานะ API key
-   */
   async updateApiKeyStatus(userId, apiKeyId, isActive) {
     try {
       const query = `
@@ -255,9 +231,6 @@ class TokenService {
     }
   }
 
-  /**
-   * อัปเดต last_used
-   */
   async updateLastUsed(apiKeyId) {
     try {
       const query = `
@@ -272,31 +245,22 @@ class TokenService {
     }
   }
 
-  /**
-   * สร้าง API key แบบสุ่ม
-   */
   generateApiKey() {
-    const prefix = 'th_'; // TerraHost prefix
+    const prefix = 'th_';
     const randomBytes = crypto.randomBytes(32).toString('hex');
     const timestamp = Date.now().toString(36);
     return `${prefix}${randomBytes}${timestamp}`;
   }
 
-  /**
-   * Hash API key
-   */
   hashApiKey(apiKey) {
     return crypto.createHash('sha256').update(apiKey).digest('hex');
   }
 
-  /**
-   * สร้าง JWT token สำหรับ session
-   */
   async createSessionToken(userId, deviceInfo = null, ipAddress = null) {
     try {
       const token = crypto.randomBytes(32).toString('hex');
       const tokenHash = this.hashApiKey(token);
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ชั่วโมง
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       const query = `
         INSERT INTO user_sessions (user_id, token_hash, device_info, ip_address, expires_at)
@@ -328,9 +292,6 @@ class TokenService {
     }
   }
 
-  /**
-   * ตรวจสอบ session token
-   */
   async validateSessionToken(token) {
     try {
       const tokenHash = this.hashApiKey(token);
@@ -355,7 +316,6 @@ class TokenService {
 
       const sessionData = result.data[0];
 
-      // ตรวจสอบวันหมดอายุ
       if (new Date(sessionData.expires_at) < new Date()) {
         return {
           success: false,
@@ -363,7 +323,6 @@ class TokenService {
         };
       }
 
-      // ตรวจสอบสถานะผู้ใช้
       if (!sessionData.is_active) {
         return {
           success: false,
@@ -371,7 +330,6 @@ class TokenService {
         };
       }
 
-      // อัปเดต last_used
       await this.updateSessionLastUsed(sessionData.id);
 
       return {
@@ -391,9 +349,6 @@ class TokenService {
     }
   }
 
-  /**
-   * อัปเดต session last_used
-   */
   async updateSessionLastUsed(sessionId) {
     try {
       const query = `
@@ -408,9 +363,6 @@ class TokenService {
     }
   }
 
-  /**
-   * ลบ session token
-   */
   async deleteSessionToken(token) {
     try {
       const tokenHash = this.hashApiKey(token);

@@ -18,37 +18,31 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
   const [completedFiles, setCompletedFiles] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load unprocessed files when modal opens and prevent body scroll
   useEffect(() => {
     if (isOpen) {
       loadUnprocessedFiles();
       toast.success('Processing modal opened');
-      // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
     } else {
-      // Restore body scroll when modal is closed
       document.body.style.overflow = 'unset';
     }
 
-    // Cleanup function to restore scroll when component unmounts
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
 
-  // Load files that haven't been processed yet
   const loadUnprocessedFiles = async () => {
     try {
       setIsLoading(true);
       
-      // Add minimum loading time for smooth UX
       const [response] = await Promise.all([
         fileService.getUserFiles({ 
           page: 1, 
           limit: 100,
           session_status: 'not_started'
         }),
-        new Promise(resolve => setTimeout(resolve, 1500)) // 1.5 seconds minimum loading
+        new Promise(resolve => setTimeout(resolve, 1500))
       ]);
       
       if (response.success && response.data) {
@@ -68,7 +62,6 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
     }
   };
 
-  // Handle file selection
   const handleFileSelect = (fileId: string) => {
     const newSelected = new Set(selectedFiles);
     if (newSelected.has(fileId)) {
@@ -81,7 +74,6 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
     setSelectedFiles(newSelected);
   };
 
-  // Handle select all
   const handleSelectAll = () => {
     if (selectedFiles.size === unprocessedFiles.length) {
       setSelectedFiles(new Set());
@@ -92,20 +84,15 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
     }
   };
 
-  // Process single file
   const processSingleFile = async (fileId: string) => {
     try {
-      // Add to processing set
       setProcessingFiles(prev => new Set(prev).add(fileId));
       
-      // Start processing
       const result = await fileService.processGeoTIFF(fileId);
       console.log('Processing started for file:', fileId, result);
       
-      // Show success toast for starting processing
       toast.success(`Processing started for ${fileId.substring(0, 8)}...`);
       
-      // Start polling for status
       pollProcessingStatus(fileId);
     } catch (error) {
       console.error('Process file error:', error);
@@ -118,14 +105,12 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
     }
   };
 
-  // Poll processing status
   const pollProcessingStatus = async (fileId: string) => {
     const pollInterval = setInterval(async () => {
       try {
         const status = await fileService.getProcessingStatus(fileId);
         
         if (status.processingStatus === 'completed') {
-          // Processing completed
           setProcessingFiles(prev => {
             const newSet = new Set(prev);
             newSet.delete(fileId);
@@ -134,18 +119,14 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
           setCompletedFiles(prev => new Set(prev).add(fileId));
           clearInterval(pollInterval);
           
-          // Show success toast
           toast.success(`Processing completed for ${fileId.substring(0, 8)}...`);
           
-          // Remove from unprocessed files
           setUnprocessedFiles(prev => prev.filter(f => f.id !== fileId));
           
-          // Call callback if provided
           if (onProcessingComplete) {
             onProcessingComplete();
           }
         } else if (status.processingStatus === 'not_started') {
-          // Processing failed
           setProcessingFiles(prev => {
             const newSet = new Set(prev);
             newSet.delete(fileId);
@@ -154,7 +135,6 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
           clearInterval(pollInterval);
           toast.error(`Processing failed for ${fileId.substring(0, 8)}...`);
         }
-        // Continue polling if still in progress
       } catch (error) {
         console.error('Error polling status:', error);
         clearInterval(pollInterval);
@@ -165,9 +145,8 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
         });
         toast.error(`Error checking status for ${fileId.substring(0, 8)}...`);
       }
-    }, 2000); // Poll every 2 seconds
+    }, 2000);
 
-    // Cleanup after 5 minutes
     setTimeout(() => {
       clearInterval(pollInterval);
       setProcessingFiles(prev => {
@@ -179,23 +158,18 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
     }, 5 * 60 * 1000);
   };
 
-  // Handle start processing
   const handleStartProcessing = async () => {
     if (selectedFiles.size === 0) return;
     
-    // Show initial toast
     toast.success(`Starting processing for ${selectedFiles.size} files...`);
     
-    // Process files one by one (queue)
     const fileIds = Array.from(selectedFiles);
     
     for (const fileId of fileIds) {
       await processSingleFile(fileId);
-      // Small delay between files to avoid overwhelming the server
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
-    // Clear selection after starting all
     setSelectedFiles(new Set());
     toast.success(`Processing started for all ${fileIds.length} files!`);
   };
@@ -205,7 +179,6 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
   return (
     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">🚀 Processing Management</h2>
@@ -239,11 +212,9 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {isLoading ? (
             <div className="space-y-4">
-              {/* Skeleton Loading */}
               {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="animate-pulse">
                   <div className="flex items-center p-4 bg-gray-100 rounded-lg border border-gray-200">
@@ -272,7 +243,6 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
             </div>
           ) : (
             <>
-              {/* Summary */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -304,7 +274,6 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
                 </div>
               </div>
 
-              {/* File List */}
               <div className="space-y-3">
                 {unprocessedFiles.map((file) => {
                   const isProcessing = processingFiles.has(file.id);
@@ -370,7 +339,6 @@ export default function ProcessingModal({ isOpen, onClose, onProcessingComplete 
   );
 }
 
-// Helper functions
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -381,7 +349,7 @@ function formatFileSize(bytes: number): string {
 
 function formatDateTime(dateString: string): string {
   const date = new Date(dateString);
-  return date.toLocaleDateString('th-TH', {
+      return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

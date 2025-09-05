@@ -2,7 +2,6 @@ const db = require('../config/database');
 
 class DatabaseService {
   
-  // Test database connection
   async testConnection() {
     try {
       const result = await db.query('SELECT NOW() as current_time, version() as db_version');
@@ -18,7 +17,6 @@ class DatabaseService {
     }
   }
 
-  // Get database health info
   async getHealthInfo() {
     try {
       const queries = [
@@ -48,7 +46,6 @@ class DatabaseService {
     }
   }
 
-  // Execute raw query (for testing)
   async executeQuery(queryText, params = []) {
     try {
       const result = await db.query(queryText, params);
@@ -65,9 +62,6 @@ class DatabaseService {
     }
   }
 
-  // CRUD Operations
-
-  // Create - Insert new record
   async create(table, data) {
     try {
       const keys = Object.keys(data);
@@ -90,14 +84,12 @@ class DatabaseService {
     }
   }
 
-  // Read - Find records
   async findAll(table, conditions = {}, options = {}) {
     try {
       let query = `SELECT * FROM ${table}`;
       let params = [];
       let paramIndex = 1;
 
-      // WHERE conditions
       if (Object.keys(conditions).length > 0) {
         const whereClause = Object.keys(conditions).map(key => {
           params.push(conditions[key]);
@@ -106,7 +98,6 @@ class DatabaseService {
         query += ` WHERE ${whereClause}`;
       }
 
-      // ORDER BY
       if (options.orderBy) {
         query += ` ORDER BY ${options.orderBy}`;
         if (options.order) {
@@ -114,13 +105,11 @@ class DatabaseService {
         }
       }
 
-      // LIMIT
       if (options.limit) {
         query += ` LIMIT $${paramIndex++}`;
         params.push(options.limit);
       }
 
-      // OFFSET
       if (options.offset) {
         query += ` OFFSET $${paramIndex++}`;
         params.push(options.offset);
@@ -141,7 +130,6 @@ class DatabaseService {
     }
   }
 
-  // Read - Find single record by ID
   async findById(table, id) {
     try {
       const query = `SELECT * FROM ${table} WHERE id = $1`;
@@ -160,7 +148,6 @@ class DatabaseService {
     }
   }
 
-  // Update - Update record by ID
   async updateById(table, id, data) {
     try {
       const keys = Object.keys(data);
@@ -184,7 +171,6 @@ class DatabaseService {
     }
   }
 
-  // Delete - Delete record by ID
   async deleteById(table, id) {
     try {
       const query = `DELETE FROM ${table} WHERE id = $1 RETURNING *`;

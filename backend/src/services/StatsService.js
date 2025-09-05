@@ -5,9 +5,6 @@ class StatsService {
     this.db = DatabaseService;
   }
 
-  /**
-   * Get comprehensive dashboard statistics
-   */
   async getDashboardStats(userId) {
     try {
       const [
@@ -34,19 +31,14 @@ class StatsService {
     }
   }
 
-  /**
-   * Get file statistics
-   */
   async getFileStats(userId) {
     try {
-      // Get total GeoTIFF files count (shared across users)
       const totalFilesQuery = `
         SELECT COUNT(*) as total_files
         FROM geotiff_files 
         WHERE deleted_at IS NULL
       `;
       
-      // Get uploaded files count (all file types, shared across users)
       const uploadedFilesQuery = `
         SELECT COUNT(*) as uploaded_files
         FROM geotiff_files 
@@ -68,18 +60,13 @@ class StatsService {
     }
   }
 
-  /**
-   * Get processing statistics
-   */
   async getProcessingStats(userId) {
     try {
-      // Get total processing jobs count (shared across users)
       const totalJobsQuery = `
         SELECT COUNT(*) as total_jobs
         FROM processing_jobs 
       `;
       
-      // Get active processing jobs count (shared across users)
       const activeJobsQuery = `
         SELECT COUNT(*) as active_jobs
         FROM processing_jobs 
@@ -101,19 +88,14 @@ class StatsService {
     }
   }
 
-  /**
-   * Get storage statistics
-   */
   async getStorageStats(userId) {
     try {
-      // Get total storage used (shared across users)
       const storageUsedQuery = `
         SELECT COALESCE(SUM(file_size), 0) as storage_used
         FROM geotiff_files 
         WHERE deleted_at IS NULL
       `;
       
-      // Get total space available (this could be from user plan or system limit)
       const totalSpaceQuery = `
         SELECT COALESCE(SUM(file_size), 0) as total_space
         FROM geotiff_files
@@ -140,19 +122,14 @@ class StatsService {
     }
   }
 
-  /**
-   * Get data extraction statistics
-   */
   async getExtractionStats(userId) {
     try {
-      // Get completed extractions count from processing_sessions (shared across users)
       const completedExtractionsQuery = `
         SELECT COUNT(*) as completed_extractions
         FROM processing_sessions 
         WHERE status = 'completed'
       `;
       
-      // Get total data extracted (sum of file sizes from completed processing sessions, shared across users)
       const dataExtractedQuery = `
         SELECT COALESCE(SUM(ps.original_file_size), 0) as data_extracted
         FROM processing_sessions ps
@@ -177,9 +154,6 @@ class StatsService {
     }
   }
 
-  /**
-   * Format bytes to human readable format
-   */
   formatBytes(bytes) {
     if (bytes === 0) return '0 Bytes';
     
@@ -190,9 +164,6 @@ class StatsService {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
-  /**
-   * Get detailed file statistics with breakdown
-   */
   async getDetailedFileStats(userId) {
     try {
       const query = `
@@ -227,9 +198,6 @@ class StatsService {
     }
   }
 
-  /**
-   * Get processing job statistics with status breakdown
-   */
   async getDetailedProcessingStats(userId) {
     try {
       const query = `
@@ -260,9 +228,6 @@ class StatsService {
     }
   }
 
-  /**
-   * Get storage usage over time (for charts)
-   */
   async getStorageUsageOverTime(userId, days = 30) {
     try {
       const query = `

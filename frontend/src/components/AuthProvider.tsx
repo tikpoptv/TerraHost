@@ -42,7 +42,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (credentials: LoginCredentials) => {
     const result = await authService.login(credentials);
     if (result.success) {
-      // Immediately update auth state after successful login
       updateAuthState();
       console.log('🔄 Auth state updated after login');
     }
@@ -59,7 +58,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        // Only check localStorage on startup, no backend call
         updateAuthState();
         
         const hasToken = authService.hasToken();
@@ -78,7 +76,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     initializeAuth();
 
-    // Listen for storage changes (logout from API client or other tabs)
     const handleStorageChange = () => {
       console.log('🔄 Storage changed, updating auth state');
       updateAuthState();
@@ -99,13 +96,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
   };
 
-  // Show loading screen during initial auth check
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-          <span className="text-gray-700">กำลังตรวจสอบการเข้าสู่ระบบ...</span>
+          <span className="text-gray-700">Checking authentication...</span>
         </div>
       </div>
     );

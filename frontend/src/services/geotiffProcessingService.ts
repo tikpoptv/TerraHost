@@ -49,9 +49,6 @@ export interface ProcessingResult {
 }
 
 class GeoTIFFProcessingService {
-  /**
-   * เริ่มประมวลผลไฟล์ GeoTIFF
-   */
   async processGeoTIFF(fileId: string): Promise<ProcessingResult> {
     try {
       const response = await api.post<ProcessingResult>(`/files/${fileId}/process`);
@@ -65,9 +62,6 @@ class GeoTIFFProcessingService {
     }
   }
 
-  /**
-   * ดูสถานะการประมวลผล
-   */
   async getProcessingStatus(fileId: string): Promise<ProcessingStatus> {
     try {
       const response = await api.get<ProcessingStatus>(`/files/${fileId}/process/status`);
@@ -81,9 +75,6 @@ class GeoTIFFProcessingService {
     }
   }
 
-  /**
-   * ดึงข้อมูลที่แกะออกมาจาก GeoTIFF
-   */
   async getFileMetadata(fileId: string): Promise<FileMetadata> {
     try {
       const response = await api.get<FileMetadata>(`/files/${fileId}/metadata`);
@@ -97,69 +88,51 @@ class GeoTIFFProcessingService {
     }
   }
 
-  /**
-   * ตรวจสอบว่าไฟล์พร้อมประมวลผลหรือไม่
-   */
   isReadyForProcessing(uploadStatus: string): boolean {
     return uploadStatus === 'completed';
   }
 
-  /**
-   * ตรวจสอบว่าไฟล์ประมวลผลเสร็จแล้วหรือไม่
-   */
   isProcessingCompleted(uploadStatus: string): boolean {
     return uploadStatus === 'processed';
   }
 
-  /**
-   * ตรวจสอบว่าไฟล์กำลังประมวลผลอยู่หรือไม่
-   */
   isProcessingInProgress(uploadStatus: string): boolean {
     return uploadStatus === 'processing';
   }
 
-  /**
-   * แปลงสถานะเป็นข้อความภาษาไทย
-   */
   getProcessingStatusText(status: string): string {
     switch (status) {
       case 'not_started':
-        return 'ยังไม่ได้ประมวลผล';
+        return 'Not started';
       case 'in_progress':
-        return 'กำลังประมวลผล...';
+        return 'Processing...';
       case 'completed':
-        return 'ประมวลผลเสร็จแล้ว';
+        return 'Completed';
       default:
-        return 'ไม่ทราบสถานะ';
+        return 'Unknown status';
     }
   }
 
-  /**
-   * แปลงสถานะ upload เป็นข้อความภาษาไทย
-   */
   getUploadStatusText(status: string): string {
     switch (status) {
       case 'pending':
-        return 'รอการอัพโหลด';
+        return 'Pending upload';
       case 'uploading':
-        return 'กำลังอัพโหลด...';
+        return 'Uploading...';
       case 'processing':
-        return 'กำลังประมวลผล...';
+        return 'Processing...';
       case 'completed':
-        return 'อัพโหลดเสร็จแล้ว';
+        return 'Upload completed';
       case 'failed':
-        return 'เกิดข้อผิดพลาด';
+        return 'Failed';
       default:
-        return 'ไม่ทราบสถานะ';
+        return 'Unknown status';
     }
   }
 
-  /**
-   * รอจนกว่าการประมวลผลจะเสร็จ (polling)
-   */
   async waitForProcessing(fileId: string, maxWaitTime: number = 300000): Promise<ProcessingStatus> {
     const startTime = Date.now();
-    const pollInterval = 2000; // 2 วินาที
+    const pollInterval = 2000;
 
     while (Date.now() - startTime < maxWaitTime) {
       try {
@@ -173,7 +146,6 @@ class GeoTIFFProcessingService {
           throw new Error('Processing failed or was cancelled');
         }
 
-        // รอแล้วลองใหม่
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       } catch (error) {
         console.error('Error while waiting for processing:', error);
@@ -185,6 +157,5 @@ class GeoTIFFProcessingService {
   }
 }
 
-// Export singleton instance
 const geotiffProcessingService = new GeoTIFFProcessingService();
 export default geotiffProcessingService;
